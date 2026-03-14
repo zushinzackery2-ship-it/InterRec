@@ -1,0 +1,34 @@
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build outputs
+bin/
+obj/
+Debug/
+Release/
+x64/
+x86/
+
+# C/C++
+*.ilk
+*.ipch
+*.iobj
+*.ipdb
+*.pch
+*.pdb
+*.exp
+*.lib
+*.idb
+*.tlog
+*.lastbuildstate
+
+# C#
+*.cache
+
+# Logs
+*.log
+

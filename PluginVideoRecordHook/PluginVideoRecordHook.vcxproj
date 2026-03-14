@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{C6C7C6A2-4B6C-4F2A-9A6C-72A78F88A101}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>PluginVideoRecordHook</RootNamespace>
+    <ProjectName>PluginVideoRecordHook</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>PluginVideoRecordHook</TargetName>
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Shared;$(SolutionDir)..\RainGui\RainGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;WIN64;NOMINMAX;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>user32.lib;gdi32.lib;dwmapi.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;mmdevapi.lib;ole32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="PluginVideoRecordHookMain.cpp" />
+    <ClCompile Include="PluginVideoRecordHost.cpp" />
+    <ClCompile Include="PluginVideoRecordIpcServer.cpp" />
+    <ClCompile Include="PluginVideoRecordVideoRecorder.cpp" />
+    <ClCompile Include="PluginVideoRecordDx11Capture.cpp" />
+    <ClCompile Include="PluginVideoRecordAudioLoopbackInterop.cpp" />
+    <ClCompile Include="PluginVideoRecordProcessAudioCapture.cpp" />
+    <ClCompile Include="PluginVideoRecordMfSinkWriterFactory.cpp" />
+    <ClCompile Include="PluginVideoRecordMfAudioInterop.cpp" />
+    <ClCompile Include="PluginVideoRecordMfWriter.cpp" />
+    <ClCompile Include="PluginVideoRecordMfInterop.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_draw.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_widgets.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_tables.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_defaults.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_win32.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_dx11.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_probe.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_bootstrap.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_debug.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_resources.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_context.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_hooks_common.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_hooks_present.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="PluginVideoRecordHost.h" />
+    <ClInclude Include="PluginVideoRecordIpcServer.h" />
+    <ClInclude Include="PluginVideoRecordVideoRecorder.h" />
+    <ClInclude Include="PluginVideoRecordDx11Capture.h" />
+    <ClInclude Include="PluginVideoRecordAudioLoopbackInterop.h" />
+    <ClInclude Include="PluginVideoRecordProcessAudioCapture.h" />
+    <ClInclude Include="PluginVideoRecordMfInternal.h" />
+    <ClInclude Include="PluginVideoRecordMfWriter.h" />
+    <ClInclude Include="PluginVideoRecordMfInterop.h" />
+    <ClInclude Include="..\Shared\PluginVideoRecordProtocol.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
