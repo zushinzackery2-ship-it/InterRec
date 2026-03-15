@@ -28,10 +28,9 @@ namespace PluginVideoRecord
         HBRUSH backgroundBrush = CreateSolidBrush(RGB(24, 24, 24));
         FillRect(deviceContext, &previewRect, backgroundBrush);
         DeleteObject(backgroundBrush);
-        FrameRect(deviceContext, &previewRect, static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
 
         RECT innerRect = previewRect;
-        InflateRect(&innerRect, -1, -1);
+        InflateRect(&innerRect, -2, -2);
 
         if (preview.isValid && !preview.pixels.empty())
         {

@@ -90,9 +90,10 @@ namespace PluginVideoRecord
         std::wstring error;
         if (recorder_.IsRecording() && !recorder_.OnFrame(runtime, error))
         {
+            const std::wstring outputPath = recorder_.GetCurrentOutputPath();
             recorder_.Stop();
             LogMessage(L"DX11 录制已停止：" + error);
-            PublishState(RecorderState::Error, L"", error, -1);
+            PublishState(RecorderState::Error, outputPath, error, -1);
         }
     }
 
@@ -110,9 +111,10 @@ namespace PluginVideoRecord
         std::wstring error;
         if (recorder_.IsRecording() && !recorder_.OnFrame(runtime, error))
         {
+            const std::wstring outputPath = recorder_.GetCurrentOutputPath();
             recorder_.Stop();
             LogMessage(L"DX12 录制已停止：" + error);
-            PublishState(RecorderState::Error, L"", error, -1);
+            PublishState(RecorderState::Error, outputPath, error, -1);
         }
     }
 
@@ -180,9 +182,10 @@ namespace PluginVideoRecord
             break;
 
         case CommandType::StopRecording:
+            outputPath = recorder_.GetCurrentOutputPath();
             recorder_.Stop();
             LogMessage(L"收到停止录制命令。");
-            PublishState(RecorderState::Standby, L"", L"", 0);
+            PublishState(RecorderState::Standby, outputPath, L"", 0);
             break;
 
         default:
@@ -236,10 +239,11 @@ namespace PluginVideoRecord
             break;
 
         case CommandType::StopRecording:
+            outputPath = recorder_.GetCurrentOutputPath();
             recorder_.Stop();
             waitingForDx12Queue_ = false;
             LogMessage(L"收到停止录制命令。");
-            PublishState(RecorderState::Standby, L"", L"", 0);
+            PublishState(RecorderState::Standby, outputPath, L"", 0);
             break;
 
         default:
@@ -255,6 +259,12 @@ namespace PluginVideoRecord
         const std::wstring& message,
         LONG errorCode)
     {
-        ipcServer_.SetRecorderState(recorderState, outputPath, message, errorCode);
+        std::wstring stateOutputPath = outputPath;
+        if (stateOutputPath.empty())
+        {
+            stateOutputPath = recorder_.GetPendingOutputPath();
+        }
+
+        ipcServer_.SetRecorderState(recorderState, stateOutputPath, message, errorCode);
     }
 }

@@ -21,6 +21,7 @@ namespace PluginVideoRecord
 
     private:
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+        static LRESULT CALLBACK PreviewPanelProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 
         bool Create(HINSTANCE instanceHandle, int showCommand);
         bool CreateFonts();
@@ -54,6 +55,7 @@ namespace PluginVideoRecord
         HWND startButton_;
         HWND stopButton_;
         HWND logEdit_;
+        HWND previewPanel_;
         RECT pageContentRect_;
         RECT previewRect_;
         HFONT regularFont_;

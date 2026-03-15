@@ -5,6 +5,34 @@
 
 namespace
 {
+    std::wstring GetPathLeafName(const std::wstring& path)
+    {
+        const size_t separator = path.find_last_of(L"\\/");
+        if (separator == std::wstring::npos)
+        {
+            return path;
+        }
+
+        return path.substr(separator + 1);
+    }
+
+    bool RemoveLastPathComponent(std::wstring& path)
+    {
+        const size_t separator = path.find_last_of(L"\\/");
+        if (separator == std::wstring::npos)
+        {
+            return false;
+        }
+
+        path.resize(separator);
+        return !path.empty();
+    }
+
+    bool IsPathLeafEqual(const std::wstring& path, const wchar_t* expectedName)
+    {
+        return _wcsicmp(GetPathLeafName(path).c_str(), expectedName) == 0;
+    }
+
     bool GetGameDirectory(std::wstring& gameDirectory)
     {
         wchar_t modulePath[MAX_PATH] = {};
@@ -20,6 +48,31 @@ namespace
         }
 
         gameDirectory = modulePath;
+
+        // 一些游戏把主程序放在 Binaries 或 Binaries\Win64 目录下，录屏目录放回游戏根目录更直观。
+        std::wstring rootDirectory = gameDirectory;
+        if (IsPathLeafEqual(rootDirectory, L"Win64") ||
+            IsPathLeafEqual(rootDirectory, L"Win32") ||
+            IsPathLeafEqual(rootDirectory, L"x64") ||
+            IsPathLeafEqual(rootDirectory, L"x86"))
+        {
+            std::wstring parentDirectory = rootDirectory;
+            if (RemoveLastPathComponent(parentDirectory) && IsPathLeafEqual(parentDirectory, L"Binaries"))
+            {
+                rootDirectory = parentDirectory;
+                RemoveLastPathComponent(rootDirectory);
+            }
+        }
+        else if (IsPathLeafEqual(rootDirectory, L"Binaries"))
+        {
+            RemoveLastPathComponent(rootDirectory);
+        }
+
+        if (!rootDirectory.empty())
+        {
+            gameDirectory = rootDirectory;
+        }
+
         return true;
     }
 
@@ -84,6 +137,19 @@ namespace PluginVideoRecord
         return currentOutputPath_;
     }
 
+    std::wstring PluginVideoRecordVideoRecorder::GetPendingOutputPath() const
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        std::wstring outputPath;
+        if (BuildPendingOutputPath(outputPath))
+        {
+            return outputPath;
+        }
+
+        return L"";
+    }
+
     bool PluginVideoRecordVideoRecorder::BuildOutputPath(std::wstring& outputPath, std::wstring& error) const
     {
         std::wstring gameDirectory;
@@ -105,6 +171,18 @@ namespace PluginVideoRecord
         }
 
         outputPath = outputDirectory + L"\\" + BuildTimestamp() + L".mp4";
+        return true;
+    }
+
+    bool PluginVideoRecordVideoRecorder::BuildPendingOutputPath(std::wstring& outputPath) const
+    {
+        std::wstring gameDirectory;
+        if (!GetGameDirectory(gameDirectory))
+        {
+            return false;
+        }
+
+        outputPath = gameDirectory + L"\\PluginVideoRecord\\时间戳.mp4";
         return true;
     }
 

@@ -4,7 +4,7 @@
 
 namespace
 {
-    constexpr ULONGLONG PreviewIntervalMs = 100;
+    constexpr ULONGLONG PreviewIntervalMs = 33;
 }
 
 namespace PluginVideoRecord

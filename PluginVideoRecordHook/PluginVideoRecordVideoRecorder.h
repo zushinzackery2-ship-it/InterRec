@@ -23,9 +23,11 @@ namespace PluginVideoRecord
         bool OnFrame(const RainGuiDx12HookRuntime* runtime, std::wstring& error);
         bool IsRecording() const;
         std::wstring GetCurrentOutputPath() const;
+        std::wstring GetPendingOutputPath() const;
 
     private:
         bool BuildOutputPath(std::wstring& outputPath, std::wstring& error) const;
+        bool BuildPendingOutputPath(std::wstring& outputPath) const;
         LONGLONG GetSampleTimeHns() const;
         bool StartWriterAndAudio(UINT width, UINT height, const std::wstring& outputPath, std::wstring& error);
         void StopUnlocked();

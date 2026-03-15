@@ -4,15 +4,15 @@
 
 namespace
 {
-    constexpr int TabMargin = 16;
-    constexpr int ContentInset = 20;
-    constexpr int ButtonWidth = 112;
-    constexpr int ButtonHeight = 34;
-    constexpr int TitleHeight = 36;
-    constexpr int LabelHeight = 24;
-    constexpr int RowGap = 14;
-    constexpr int ValueHeight = 28;
-    constexpr int GroupGap = 12;
+    constexpr int TabMargin = 12;
+    constexpr int ContentInset = 14;
+    constexpr int ButtonWidth = 96;
+    constexpr int ButtonHeight = 30;
+    constexpr int TitleHeight = 30;
+    constexpr int LabelHeight = 20;
+    constexpr int RowGap = 10;
+    constexpr int ValueHeight = 26;
+    constexpr int GroupGap = 8;
 
     int ClampInt(int value, int minimum, int maximum)
     {
@@ -34,11 +34,11 @@ namespace PluginVideoRecord
 {
     bool PluginVideoRecordMainWindow::CreateFonts()
     {
-        regularFont_ = CreateFontW(-18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+        regularFont_ = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-        titleFont_ = CreateFontW(-30, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+        titleFont_ = CreateFontW(-20, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-        monoFont_ = CreateFontW(-17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+        monoFont_ = CreateFontW(-12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, FIXED_PITCH, L"Consolas");
         return regularFont_ && titleFont_ && monoFont_;
     }
@@ -77,7 +77,7 @@ namespace PluginVideoRecord
         recorderValue_ = CreateWindowExW(0, L"STATIC", L"待机中", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
         outputCaption_ = CreateWindowExW(0, L"STATIC", L"输出路径", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
         outputEdit_ = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_NOHIDESEL,
+            WS_CHILD | WS_VISIBLE | WS_HSCROLL | ES_AUTOHSCROLL | ES_READONLY | ES_NOHIDESEL,
             0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
         messageCaption_ = CreateWindowExW(0, L"STATIC", L"状态信息", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
         messageEdit_ = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
@@ -87,6 +87,19 @@ namespace PluginVideoRecord
             hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(1001)), nullptr, nullptr);
         stopButton_ = CreateWindowExW(0, L"BUTTON", L"结束录制", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0,
             hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(1002)), nullptr, nullptr);
+        previewPanel_ = CreateWindowExW(
+            WS_EX_CLIENTEDGE,
+            L"PluginVideoRecordPreviewPanel",
+            L"",
+            WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
+            0,
+            0,
+            0,
+            0,
+            hwnd_,
+            nullptr,
+            reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(hwnd_, GWLP_HINSTANCE)),
+            this);
         logEdit_ = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
             WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_NOHIDESEL | WS_VSCROLL,
             0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
@@ -157,16 +170,16 @@ namespace PluginVideoRecord
         const int contentWidth = ClampInt(right - left, 0, 32767);
         const int contentHeight = ClampInt(bottom - top, 0, 32767);
 
-        const int buttonGap = 12;
+        const int buttonGap = 10;
         const int buttonGroupWidth = ButtonWidth * 2 + buttonGap;
-        const int titleWidth = ClampInt(contentWidth - buttonGroupWidth - 18, 160, 320);
+        const int titleWidth = ClampInt(contentWidth - buttonGroupWidth - 12, 120, 240);
         MoveWindow(titleLabel_, left, top - 2, titleWidth, TitleHeight, TRUE);
         MoveWindow(startButton_, right - buttonGroupWidth, top, ButtonWidth, ButtonHeight, TRUE);
         MoveWindow(stopButton_, right - ButtonWidth, top, ButtonWidth, ButtonHeight, TRUE);
 
-        int rowTop = top + TitleHeight + 18;
-        const int groupWidth = ClampInt((contentWidth - GroupGap * 2) / 3, 120, 32767);
-        const int valueOffset = LabelHeight - 2;
+        int rowTop = top + TitleHeight + 12;
+        const int groupWidth = ClampInt((contentWidth - GroupGap * 2) / 3, 90, 32767);
+        const int valueOffset = LabelHeight - 1;
 
         MoveWindow(communicationCaption_, left, rowTop, groupWidth, LabelHeight, TRUE);
         MoveWindow(communicationValue_, left, rowTop + valueOffset, groupWidth, ValueHeight, TRUE);
@@ -176,21 +189,21 @@ namespace PluginVideoRecord
         MoveWindow(backendValue_, backendLeft, rowTop + valueOffset, groupWidth, ValueHeight, TRUE);
 
         const int recorderLeft = backendLeft + groupWidth + GroupGap;
-        const int recorderWidth = ClampInt(right - recorderLeft, 120, 32767);
+        const int recorderWidth = ClampInt(right - recorderLeft, 90, 32767);
         MoveWindow(recorderCaption_, recorderLeft, rowTop, recorderWidth, LabelHeight, TRUE);
         MoveWindow(recorderValue_, recorderLeft, rowTop + valueOffset, recorderWidth, ValueHeight, TRUE);
 
         rowTop += valueOffset + ValueHeight + RowGap + 2;
         MoveWindow(outputCaption_, left, rowTop, contentWidth, LabelHeight, TRUE);
-        rowTop += LabelHeight + 6;
+        rowTop += LabelHeight + 4;
 
-        const int outputHeight = ClampInt(contentHeight / 5, 56, 96);
+        const int outputHeight = ValueHeight + 12;
         MoveWindow(outputEdit_, left, rowTop, contentWidth, outputHeight, TRUE);
 
-        rowTop += outputHeight + RowGap;
+        rowTop += outputHeight + RowGap + 4;
         MoveWindow(messageCaption_, left, rowTop, contentWidth, LabelHeight, TRUE);
-        rowTop += LabelHeight + 6;
-        MoveWindow(messageEdit_, left, rowTop, contentWidth, ClampInt(bottom - rowTop, 72, 32767), TRUE);
+        rowTop += LabelHeight + 4;
+        MoveWindow(messageEdit_, left, rowTop, contentWidth, ClampInt(bottom - rowTop, 60, 32767), TRUE);
 
         RECT logRect = pageContentRect_;
         InflateRect(&logRect, -ContentInset, -ContentInset);
@@ -198,11 +211,20 @@ namespace PluginVideoRecord
 
         previewRect_ = pageContentRect_;
         InflateRect(&previewRect_, -ContentInset, -ContentInset);
+        MoveWindow(
+            previewPanel_,
+            previewRect_.left,
+            previewRect_.top,
+            previewRect_.right - previewRect_.left,
+            previewRect_.bottom - previewRect_.top,
+            TRUE);
+        SetWindowPos(previewPanel_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
 
     void PluginVideoRecordMainWindow::ApplyPageVisibility()
     {
         const bool showRecordPage = GetSelectedPage() == ControllerPage::Record;
+        const bool showPreviewPage = GetSelectedPage() == ControllerPage::Preview;
         const bool showLogPage = GetSelectedPage() == ControllerPage::Log;
 
         const HWND recordControls[] =
@@ -227,8 +249,18 @@ namespace PluginVideoRecord
             ShowWindow(controlHandle, showRecordPage ? SW_SHOW : SW_HIDE);
         }
 
+        ShowWindow(previewPanel_, showPreviewPage ? SW_SHOW : SW_HIDE);
         ShowWindow(logEdit_, showLogPage ? SW_SHOW : SW_HIDE);
         InvalidateRect(hwnd_, &pageContentRect_, TRUE);
+        if (showPreviewPage && previewPanel_)
+        {
+            SetWindowPos(previewPanel_, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            RedrawWindow(
+                previewPanel_,
+                nullptr,
+                nullptr,
+                RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE | RDW_FRAME);
+        }
     }
 
     ControllerPage PluginVideoRecordMainWindow::GetSelectedPage() const

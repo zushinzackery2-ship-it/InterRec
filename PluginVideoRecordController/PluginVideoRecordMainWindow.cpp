@@ -5,12 +5,15 @@
 namespace
 {
     constexpr UINT_PTR RefreshTimerId = 1;
-    constexpr UINT RefreshIntervalMs = 100;
+    constexpr UINT RefreshIntervalMs = 50;
     constexpr int StartButtonId = 1001;
     constexpr int StopButtonId = 1002;
-    constexpr int MinWindowWidth = 600;
-    constexpr int MinWindowHeight = 440;
+    constexpr int InitialWindowWidth = 460;
+    constexpr int InitialWindowHeight = 360;
+    constexpr int MinWindowWidth = 460;
+    constexpr int MinWindowHeight = 340;
     constexpr wchar_t WindowClassName[] = L"PluginVideoRecordControllerWindow";
+    constexpr wchar_t PreviewPanelClassName[] = L"PluginVideoRecordPreviewPanel";
 }
 
 namespace PluginVideoRecord
@@ -32,6 +35,7 @@ namespace PluginVideoRecord
         , startButton_(nullptr)
         , stopButton_(nullptr)
         , logEdit_(nullptr)
+        , previewPanel_(nullptr)
         , regularFont_(nullptr)
         , titleFont_(nullptr)
         , monoFont_(nullptr)
@@ -87,15 +91,27 @@ namespace PluginVideoRecord
             return false;
         }
 
+        WNDCLASSEXW previewPanelClass = {};
+        previewPanelClass.cbSize = sizeof(previewPanelClass);
+        previewPanelClass.hInstance = instanceHandle;
+        previewPanelClass.lpszClassName = PreviewPanelClassName;
+        previewPanelClass.lpfnWndProc = PreviewPanelProc;
+        previewPanelClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+        previewPanelClass.hbrBackground = nullptr;
+        if (!RegisterClassExW(&previewPanelClass))
+        {
+            return false;
+        }
+
         hwnd_ = CreateWindowExW(
             0,
             WindowClassName,
             L"InterRec Controller",
-            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX,
+            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX | WS_CLIPCHILDREN,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            640,
-            520,
+            InitialWindowWidth,
+            InitialWindowHeight,
             nullptr,
             nullptr,
             instanceHandle,
@@ -108,6 +124,41 @@ namespace PluginVideoRecord
         ShowWindow(hwnd_, showCommand);
         UpdateWindow(hwnd_);
         return true;
+    }
+
+    LRESULT CALLBACK PluginVideoRecordMainWindow::PreviewPanelProc(
+        HWND hwnd,
+        UINT message,
+        WPARAM wParam,
+        LPARAM lParam)
+    {
+        auto* self = reinterpret_cast<PluginVideoRecordMainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+        if (message == WM_NCCREATE)
+        {
+            auto* createStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
+            self = static_cast<PluginVideoRecordMainWindow*>(createStruct->lpCreateParams);
+            SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
+        }
+
+        if (!self)
+        {
+            return DefWindowProcW(hwnd, message, wParam, lParam);
+        }
+
+        switch (message)
+        {
+        case WM_ERASEBKGND:
+            return 1;
+
+        case WM_PAINT:
+            self->PaintPreview();
+            return 0;
+
+        default:
+            break;
+        }
+
+        return DefWindowProcW(hwnd, message, wParam, lParam);
     }
 
     LRESULT CALLBACK PluginVideoRecordMainWindow::WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -178,6 +229,11 @@ namespace PluginVideoRecord
         case WM_SIZE:
             self->LayoutControls();
             self->ApplyPageVisibility();
+            RedrawWindow(
+                hwnd,
+                nullptr,
+                nullptr,
+                RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_ERASE | RDW_FRAME);
             return 0;
 
         case WM_GETMINMAXINFO:
@@ -196,10 +252,6 @@ namespace PluginVideoRecord
                 return 0;
             }
             break;
-
-        case WM_PAINT:
-            self->PaintPreview();
-            return 0;
 
         case WM_DESTROY:
             KillTimer(hwnd, RefreshTimerId);

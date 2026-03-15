@@ -5,6 +5,14 @@
 
 namespace
 {
+    void ClearPreviewSnapshot(PluginVideoRecord::PreviewFrameSnapshot& preview)
+    {
+        preview.isValid = false;
+        preview.width = 0;
+        preview.height = 0;
+        preview.pixels.clear();
+    }
+
     std::wstring GetBackendText(PluginVideoRecord::GraphicsBackend backend)
     {
         switch (backend)
@@ -40,7 +48,7 @@ namespace PluginVideoRecord
 {
     void PluginVideoRecordMainWindow::PaintPreview()
     {
-        if (GetSelectedPage() != ControllerPage::Preview)
+        if (!previewPanel_)
         {
             PAINTSTRUCT paintStruct = {};
             BeginPaint(hwnd_, &paintStruct);
@@ -48,7 +56,9 @@ namespace PluginVideoRecord
             return;
         }
 
-        PaintControllerPreview(hwnd_, previewRect_, preview_, isOnline_, recorderState_ == RecorderState::Recording);
+        RECT clientRect = {};
+        GetClientRect(previewPanel_, &clientRect);
+        PaintControllerPreview(previewPanel_, clientRect, preview_, isOnline_, recorderState_ == RecorderState::Recording);
     }
 
     void PluginVideoRecordMainWindow::RefreshStatus()
@@ -83,19 +93,20 @@ namespace PluginVideoRecord
     {
         if (shouldReadPreview)
         {
-            ipc_.ReadPreview(preview_);
+            PreviewFrameSnapshot nextPreview = preview_;
+            if (ipc_.ReadPreview(nextPreview))
+            {
+                preview_ = std::move(nextPreview);
+            }
         }
         else
         {
-            preview_.isValid = false;
-            preview_.width = 0;
-            preview_.height = 0;
-            preview_.pixels.clear();
+            ClearPreviewSnapshot(preview_);
         }
 
-        if (GetSelectedPage() == ControllerPage::Preview)
+        if (GetSelectedPage() == ControllerPage::Preview && previewPanel_)
         {
-            InvalidateRect(hwnd_, &previewRect_, FALSE);
+            InvalidateRect(previewPanel_, nullptr, FALSE);
         }
     }
 
@@ -111,7 +122,7 @@ namespace PluginVideoRecord
 
         std::wstring outputText = state.currentOutputPath[0] != L'\0'
             ? state.currentOutputPath
-            : L"\\PluginVideoRecord\\时间戳.mp4";
+            : L"等待 Hook 端提供输出路径。";
         SetControlText(outputEdit_, outputText);
 
         std::wstring messageText;

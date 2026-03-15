@@ -37,15 +37,16 @@ namespace PluginVideoRecord
 
     bool PluginVideoRecordControllerIpc::ReadPreview(PreviewFrameSnapshot& preview)
     {
-        preview.isValid = false;
-        preview.width = 0;
-        preview.height = 0;
-        preview.pixels.clear();
-
         if (!EnsurePreviewConnected())
         {
             return false;
         }
+
+        PreviewFrameSnapshot nextPreview = {};
+        nextPreview.isValid = false;
+        nextPreview.width = 0;
+        nextPreview.height = 0;
+        nextPreview.pixels.clear();
 
         for (int attempt = 0; attempt < 3; ++attempt)
         {
@@ -75,26 +76,26 @@ namespace PluginVideoRecord
 
             if (hasPixels)
             {
-                preview.pixels.resize(pixelBytes);
-                CopyMemory(preview.pixels.data(), previewView_->pixels, pixelBytes);
+                nextPreview.pixels.resize(pixelBytes);
+                CopyMemory(nextPreview.pixels.data(), previewView_->pixels, pixelBytes);
             }
 
             const LONG endSequence = previewView_->frameSequence;
             if (beginSequence == endSequence && (endSequence & 1) == 0)
             {
-                preview.isValid = hasPixels;
-                preview.width = hasPixels ? static_cast<UINT>(width) : 0;
-                preview.height = hasPixels ? static_cast<UINT>(height) : 0;
+                nextPreview.isValid = hasPixels;
+                nextPreview.width = hasPixels ? static_cast<UINT>(width) : 0;
+                nextPreview.height = hasPixels ? static_cast<UINT>(height) : 0;
                 if (!hasPixels)
                 {
-                    preview.pixels.clear();
+                    nextPreview.pixels.clear();
                 }
 
+                preview = std::move(nextPreview);
                 return true;
             }
         }
 
-        preview.pixels.clear();
         return false;
     }
 
