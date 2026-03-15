@@ -1,6 +1,6 @@
 # InterRec
 
-`InterRec` 是一个自用的 DX11 游戏内录制工具，当前工程针对 `Koikatsu Sunshine` 场景整理。
+`InterRec` 是一个自用的 DX11 游戏内录制工具，用于游戏进程内录制。
 
 ## 主要功能
 
@@ -27,6 +27,21 @@
 - `Shared/`
   - IPC 协议和共享常量
 
+## 依赖
+
+- `RainGui`
+  - 远程地址：`https://github.com/zushinzackery2-ship-it/RainGui.git`
+  - 当前工程按源码方式直接引用，默认要求 `RainGui` 仓库与本仓库同级放置
+  - 预期本地目录：
+
+```text
+InterRec/
+..\RainGui/
+```
+
+- `BepInEx`
+  - `PluginVideoRecordLoader` 需要目标游戏环境中已有可用的 `BepInEx 5`
+
 ## 构建
 
 项目默认使用 `VS2022 x64 Release`，构建前会先调用开发者命令提示符。
@@ -35,6 +50,11 @@
 cd .\PluginVideoRecord
 .\build.bat
 ```
+
+说明：
+
+- `PluginVideoRecordHook` 会直接编译 `..\RainGui\RainGui\` 下的源码文件
+- 如果 `RainGui` 不在默认相对路径，需要先调整工程里的包含路径和源码引用
 
 构建产物位于：
 
