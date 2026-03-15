@@ -1,5 +1,6 @@
 #include "pch.h"
 
+#include "PluginVideoRecordPreviewPublisher.h"
 #include "PluginVideoRecordVideoRecorder.h"
 
 namespace
@@ -39,18 +40,6 @@ namespace
             localTime.wSecond);
         return buffer;
     }
-
-    LONGLONG ConvertCounterToHns(LONGLONG counter, LONGLONG frequency)
-    {
-        if (frequency == 0)
-        {
-            return 0;
-        }
-
-        const LONGLONG quotient = counter / frequency;
-        const LONGLONG remainder = counter % frequency;
-        return quotient * 10000000LL + remainder * 10000000LL / frequency;
-    }
 }
 
 namespace PluginVideoRecord
@@ -59,6 +48,8 @@ namespace PluginVideoRecord
         : startQpcHns_(0)
         , qpcReady_(false)
         , recording_(false)
+        , activeBackend_(GraphicsBackend::Unknown)
+        , previewPublisher_(nullptr)
     {
         performanceFrequency_.QuadPart = 0;
         startCounter_.QuadPart = 0;
@@ -69,105 +60,16 @@ namespace PluginVideoRecord
         Stop();
     }
 
-    bool PluginVideoRecordVideoRecorder::Start(
-        const RainGuiDx11HookRuntime* runtime,
-        std::wstring& outputPath,
-        std::wstring& error)
+    void PluginVideoRecordVideoRecorder::SetPreviewPublisher(PluginVideoRecordPreviewPublisher* previewPublisher)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        StopUnlocked();
-
-        if (!runtime || !runtime->swapChain || !runtime->device || !runtime->deviceContext)
-        {
-            error = L"DX11 运行时还没准备好，暂时不能开始录制。";
-            return false;
-        }
-
-        if (!capture_.Initialize(runtime, error))
-        {
-            return false;
-        }
-
-        if (!BuildOutputPath(outputPath, error))
-        {
-            capture_.Shutdown();
-            return false;
-        }
-
-        if (!QueryPerformanceFrequency(&performanceFrequency_) || !QueryPerformanceCounter(&startCounter_))
-        {
-            error = L"无法初始化高精度计时器。";
-            capture_.Shutdown();
-            return false;
-        }
-
-        startQpcHns_ = ConvertCounterToHns(startCounter_.QuadPart, performanceFrequency_.QuadPart);
-        qpcReady_ = true;
-
-        if (!writer_.Start(outputPath, capture_.GetCaptureWidth(), capture_.GetCaptureHeight(), error))
-        {
-            capture_.Shutdown();
-            qpcReady_ = false;
-            startQpcHns_ = 0;
-            return false;
-        }
-
-        if (!audioCapture_.Start(GetCurrentProcessId(), startQpcHns_, &writer_, error))
-        {
-            writer_.Stop();
-            capture_.Shutdown();
-            qpcReady_ = false;
-            startQpcHns_ = 0;
-            return false;
-        }
-
-        currentOutputPath_ = outputPath;
-        recording_ = true;
-        return true;
+        previewPublisher_ = previewPublisher;
     }
 
     void PluginVideoRecordVideoRecorder::Stop()
     {
         std::lock_guard<std::mutex> lock(mutex_);
         StopUnlocked();
-    }
-
-    bool PluginVideoRecordVideoRecorder::OnFrame(const RainGuiDx11HookRuntime* runtime, std::wstring& error)
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (!recording_)
-        {
-            return true;
-        }
-
-        if (audioCapture_.TryGetLastError(error))
-        {
-            return false;
-        }
-
-        if (!capture_.MatchesRuntime(runtime))
-        {
-            error = L"检测到分辨率或缓冲格式变化，当前录制已停止。";
-            return false;
-        }
-
-        CapturedFrame frame = {};
-        if (!capture_.CaptureFrame(runtime, GetSampleTimeHns(), frame, error))
-        {
-            return false;
-        }
-
-        if (!writer_.EnqueueFrame(std::move(frame)))
-        {
-            std::wstring writerError;
-            if (writer_.TryGetLastError(writerError))
-            {
-                error = writerError;
-                return false;
-            }
-        }
-
-        return true;
     }
 
     bool PluginVideoRecordVideoRecorder::IsRecording() const
@@ -220,15 +122,53 @@ namespace PluginVideoRecord
         return delta * 10000000LL / performanceFrequency_.QuadPart;
     }
 
+    bool PluginVideoRecordVideoRecorder::StartWriterAndAudio(
+        UINT width,
+        UINT height,
+        const std::wstring& outputPath,
+        std::wstring& error)
+    {
+        if (!QueryPerformanceFrequency(&performanceFrequency_) || !QueryPerformanceCounter(&startCounter_))
+        {
+            error = L"无法初始化高精度计时器。";
+            return false;
+        }
+
+        startQpcHns_ = startCounter_.QuadPart * 10000000LL / performanceFrequency_.QuadPart;
+        qpcReady_ = true;
+
+        if (!writer_.Start(outputPath, width, height, error))
+        {
+            qpcReady_ = false;
+            return false;
+        }
+
+        if (!audioCapture_.Start(GetCurrentProcessId(), startQpcHns_, &writer_, error))
+        {
+            writer_.Stop();
+            qpcReady_ = false;
+            return false;
+        }
+
+        return true;
+    }
+
     void PluginVideoRecordVideoRecorder::StopUnlocked()
     {
         audioCapture_.Stop();
         writer_.Stop();
-        capture_.Shutdown();
+        dx11Capture_.Shutdown();
+        dx12Capture_.Shutdown();
 
         startQpcHns_ = 0;
         qpcReady_ = false;
         recording_ = false;
+        activeBackend_ = GraphicsBackend::Unknown;
         currentOutputPath_.clear();
+
+        if (previewPublisher_)
+        {
+            previewPublisher_->Clear();
+        }
     }
 }

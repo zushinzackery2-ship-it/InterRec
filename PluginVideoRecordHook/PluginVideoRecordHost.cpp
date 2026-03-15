@@ -1,7 +1,5 @@
 #include "pch.h"
 
-#include "../../RainGui/RainGui/raingui_impl_dx11hook.h"
-
 #include "PluginVideoRecordHost.h"
 
 namespace PluginVideoRecord
@@ -9,7 +7,10 @@ namespace PluginVideoRecord
     PluginVideoRecordHost::PluginVideoRecordHost(HMODULE moduleHandle)
         : moduleHandle_(moduleHandle)
         , stopRequested_(false)
+        , currentBackend_(GraphicsBackend::Unknown)
+        , waitingForDx12Queue_(false)
     {
+        recorder_.SetPreviewPublisher(&previewPublisher_);
     }
 
     int PluginVideoRecordHost::Run()
@@ -19,12 +20,15 @@ namespace PluginVideoRecord
             return 1;
         }
 
+        previewPublisher_.Start();
         PublishState(RecorderState::Standby, L"", L"", 0);
+        LogMessage(L"宿主已启动，等待图形 Hook。");
 
         while (!stopRequested_.load())
         {
-            if (RainGuiDx11Hook::IsInstalled() || InstallHook())
+            if (InstallUnifiedHook())
             {
+                LogMessage(L"统一图形 Hook 安装成功。");
                 break;
             }
 
@@ -37,12 +41,9 @@ namespace PluginVideoRecord
         }
 
         recorder_.Stop();
-
-        if (RainGuiDx11Hook::IsInstalled())
-        {
-            RainGuiDx11Hook::Shutdown();
-        }
-
+        unifiedHook_.Uninstall();
+        ipcServer_.SetGraphicsBackend(GraphicsBackend::Unknown);
+        previewPublisher_.Stop();
         ipcServer_.Stop();
         return 0;
     }
@@ -52,84 +53,104 @@ namespace PluginVideoRecord
         stopRequested_.store(true);
     }
 
-    void PluginVideoRecordHost::OnHookSetup(const RainGuiDx11HookRuntime* runtime, void* userData)
+    void PluginVideoRecordHost::OnDx11Frame(const RainGuiDx11HookRuntime* runtime, void* userData)
     {
         auto* self = static_cast<PluginVideoRecordHost*>(userData);
         if (self)
         {
-            self->HandleHookSetup(runtime);
+            self->HandleFrame(runtime);
         }
     }
 
-    void PluginVideoRecordHost::OnHookRender(const RainGuiDx11HookRuntime* runtime, void* userData)
+    void PluginVideoRecordHost::OnDx12Frame(const RainGuiDx12HookRuntime* runtime, void* userData)
     {
         auto* self = static_cast<PluginVideoRecordHost*>(userData);
         if (self)
         {
-            self->HandleHookRender(runtime);
+            self->HandleFrame(runtime);
         }
     }
 
-    void PluginVideoRecordHost::OnHookShutdown(void* userData)
+    bool PluginVideoRecordHost::InstallUnifiedHook()
     {
-        auto* self = static_cast<PluginVideoRecordHost*>(userData);
-        if (self)
-        {
-            self->HandleHookShutdown();
-        }
+        PluginVideoRecordUnifiedHook::Callbacks callbacks = {};
+        callbacks.onDx11Frame = OnDx11Frame;
+        callbacks.onDx12Frame = OnDx12Frame;
+        callbacks.userData = this;
+
+        std::wstring error;
+        return unifiedHook_.Install(callbacks, error);
     }
 
-    bool PluginVideoRecordHost::IsOverlayVisible(void*)
+    void PluginVideoRecordHost::HandleFrame(const RainGuiDx11HookRuntime* runtime)
     {
-        return false;
-    }
-
-    bool PluginVideoRecordHost::InstallHook()
-    {
-        RainGuiDx11HookDesc description = {};
-        RainGuiDx11Hook::FillDefaultDesc(&description);
-        description.onSetup = OnHookSetup;
-        description.onRender = OnHookRender;
-        description.onShutdown = OnHookShutdown;
-        description.isVisible = IsOverlayVisible;
-        description.userData = this;
-        description.hookWndProc = false;
-        description.blockInputWhenVisible = false;
-        description.enableDefaultDebugWindow = false;
-        description.startVisible = false;
-        description.toggleVirtualKey = 0;
-        description.warmupFrames = 10;
-        return RainGuiDx11Hook::Init(&description);
-    }
-
-    void PluginVideoRecordHost::HandleHookSetup(const RainGuiDx11HookRuntime*)
-    {
-        PublishState(RecorderState::Standby, L"", L"", 0);
-    }
-
-    void PluginVideoRecordHost::HandleHookRender(const RainGuiDx11HookRuntime* runtime)
-    {
+        UpdateGraphicsBackend(GraphicsBackend::Dx11);
         ProcessPendingCommand(runtime);
 
         std::wstring error;
         if (recorder_.IsRecording() && !recorder_.OnFrame(runtime, error))
         {
             recorder_.Stop();
+            LogMessage(L"DX11 录制已停止：" + error);
             PublishState(RecorderState::Error, L"", error, -1);
         }
     }
 
-    void PluginVideoRecordHost::HandleHookShutdown()
+    void PluginVideoRecordHost::HandleFrame(const RainGuiDx12HookRuntime* runtime)
     {
-        recorder_.Stop();
-        PublishState(RecorderState::Standby, L"", L"", 0);
+        UpdateGraphicsBackend(GraphicsBackend::Dx12);
+        if (runtime && runtime->commandQueue && waitingForDx12Queue_)
+        {
+            waitingForDx12Queue_ = false;
+            LogMessage(L"DX12 命令队列已就绪。");
+        }
+
+        ProcessPendingCommand(runtime);
+
+        std::wstring error;
+        if (recorder_.IsRecording() && !recorder_.OnFrame(runtime, error))
+        {
+            recorder_.Stop();
+            LogMessage(L"DX12 录制已停止：" + error);
+            PublishState(RecorderState::Error, L"", error, -1);
+        }
+    }
+
+    void PluginVideoRecordHost::UpdateGraphicsBackend(GraphicsBackend graphicsBackend)
+    {
+        if (currentBackend_ == graphicsBackend)
+        {
+            return;
+        }
+
+        currentBackend_ = graphicsBackend;
+        ipcServer_.SetGraphicsBackend(graphicsBackend);
+
+        switch (graphicsBackend)
+        {
+        case GraphicsBackend::Dx11:
+            LogMessage(L"已识别图形后端：DX11。");
+            break;
+
+        case GraphicsBackend::Dx12:
+            LogMessage(L"已识别图形后端：DX12。");
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    void PluginVideoRecordHost::LogMessage(const std::wstring& message)
+    {
+        ipcServer_.AppendLog(message);
     }
 
     void PluginVideoRecordHost::ProcessPendingCommand(const RainGuiDx11HookRuntime* runtime)
     {
         CommandType commandType = CommandType::None;
         LONG sequence = 0;
-        if (!ipcServer_.TryDequeueCommand(commandType, sequence))
+        if (!ipcServer_.TryPeekCommand(commandType, sequence))
         {
             return;
         }
@@ -140,6 +161,7 @@ namespace PluginVideoRecord
         switch (commandType)
         {
         case CommandType::StartRecording:
+            LogMessage(L"收到开始录制命令（DX11）。");
             if (recorder_.IsRecording())
             {
                 outputPath = recorder_.GetCurrentOutputPath();
@@ -147,16 +169,76 @@ namespace PluginVideoRecord
             }
             else if (recorder_.Start(runtime, outputPath, error))
             {
+                LogMessage(L"DX11 开始录制成功：" + outputPath);
                 PublishState(RecorderState::Recording, outputPath, L"", 0);
             }
             else
             {
+                LogMessage(L"DX11 开始录制失败：" + error);
                 PublishState(RecorderState::Error, L"", error, -1);
             }
             break;
 
         case CommandType::StopRecording:
             recorder_.Stop();
+            LogMessage(L"收到停止录制命令。");
+            PublishState(RecorderState::Standby, L"", L"", 0);
+            break;
+
+        default:
+            break;
+        }
+
+        ipcServer_.AcknowledgeCommand(commandType, sequence);
+    }
+
+    void PluginVideoRecordHost::ProcessPendingCommand(const RainGuiDx12HookRuntime* runtime)
+    {
+        CommandType commandType = CommandType::None;
+        LONG sequence = 0;
+        if (!ipcServer_.TryPeekCommand(commandType, sequence))
+        {
+            return;
+        }
+
+        std::wstring outputPath;
+        std::wstring error;
+
+        switch (commandType)
+        {
+        case CommandType::StartRecording:
+            if (!runtime || !runtime->commandQueue)
+            {
+                if (!waitingForDx12Queue_)
+                {
+                    waitingForDx12Queue_ = true;
+                    LogMessage(L"DX12 命令队列尚未捕获，开始录制命令延后处理。");
+                }
+                return;
+            }
+
+            LogMessage(L"收到开始录制命令（DX12）。");
+            if (recorder_.IsRecording())
+            {
+                outputPath = recorder_.GetCurrentOutputPath();
+                PublishState(RecorderState::Recording, outputPath, L"", 0);
+            }
+            else if (recorder_.Start(runtime, outputPath, error))
+            {
+                LogMessage(L"DX12 开始录制成功：" + outputPath);
+                PublishState(RecorderState::Recording, outputPath, L"", 0);
+            }
+            else
+            {
+                LogMessage(L"DX12 开始录制失败：" + error);
+                PublishState(RecorderState::Error, L"", error, -1);
+            }
+            break;
+
+        case CommandType::StopRecording:
+            recorder_.Stop();
+            waitingForDx12Queue_ = false;
+            LogMessage(L"收到停止录制命令。");
             PublishState(RecorderState::Standby, L"", L"", 0);
             break;
 

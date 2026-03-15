@@ -57,7 +57,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>user32.lib;gdi32.lib;dwmapi.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;mmdevapi.lib;ole32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;dwmapi.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;mmdevapi.lib;ole32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -67,8 +67,14 @@
     <ClCompile Include="PluginVideoRecordHookMain.cpp" />
     <ClCompile Include="PluginVideoRecordHost.cpp" />
     <ClCompile Include="PluginVideoRecordIpcServer.cpp" />
+    <ClCompile Include="PluginVideoRecordPreviewPublisher.cpp" />
+    <ClCompile Include="PluginVideoRecordUnifiedHook.cpp" />
+    <ClCompile Include="PluginVideoRecordUnifiedHookRuntime.cpp" />
     <ClCompile Include="PluginVideoRecordVideoRecorder.cpp" />
+    <ClCompile Include="PluginVideoRecordVideoRecorderFrame.cpp" />
     <ClCompile Include="PluginVideoRecordDx11Capture.cpp" />
+    <ClCompile Include="PluginVideoRecordDx12Capture.cpp" />
+    <ClCompile Include="PluginVideoRecordDx12CaptureResources.cpp" />
     <ClCompile Include="PluginVideoRecordAudioLoopbackInterop.cpp" />
     <ClCompile Include="PluginVideoRecordProcessAudioCapture.cpp" />
     <ClCompile Include="PluginVideoRecordMfSinkWriterFactory.cpp" />
@@ -82,6 +88,7 @@
     <ClCompile Include="..\..\RainGui\RainGui\raingui_defaults.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_win32.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_dx11.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_dx12.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_probe.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_bootstrap.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_debug.cpp" />
@@ -89,13 +96,24 @@
     <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_context.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_hooks_common.cpp" />
     <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_hooks_present.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_probe.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_bootstrap.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_debug.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_resources.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_context.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_hooks_common.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_hooks_present.cpp" />
+    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_hooks_aux.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="PluginVideoRecordHost.h" />
     <ClInclude Include="PluginVideoRecordIpcServer.h" />
+    <ClInclude Include="PluginVideoRecordPreviewPublisher.h" />
+    <ClInclude Include="PluginVideoRecordUnifiedHook.h" />
     <ClInclude Include="PluginVideoRecordVideoRecorder.h" />
     <ClInclude Include="PluginVideoRecordDx11Capture.h" />
+    <ClInclude Include="PluginVideoRecordDx12Capture.h" />
     <ClInclude Include="PluginVideoRecordAudioLoopbackInterop.h" />
     <ClInclude Include="PluginVideoRecordProcessAudioCapture.h" />
     <ClInclude Include="PluginVideoRecordMfInternal.h" />

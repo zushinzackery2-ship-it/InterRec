@@ -5,9 +5,11 @@
 namespace
 {
     constexpr UINT_PTR RefreshTimerId = 1;
-    constexpr UINT RefreshIntervalMs = 500;
+    constexpr UINT RefreshIntervalMs = 100;
     constexpr int StartButtonId = 1001;
     constexpr int StopButtonId = 1002;
+    constexpr int MinWindowWidth = 600;
+    constexpr int MinWindowHeight = 440;
     constexpr wchar_t WindowClassName[] = L"PluginVideoRecordControllerWindow";
 }
 
@@ -15,11 +17,38 @@ namespace PluginVideoRecord
 {
     PluginVideoRecordMainWindow::PluginVideoRecordMainWindow()
         : hwnd_(nullptr)
-        , communicationLabel_(nullptr)
-        , recorderLabel_(nullptr)
+        , tabControl_(nullptr)
+        , titleLabel_(nullptr)
+        , communicationCaption_(nullptr)
+        , communicationValue_(nullptr)
+        , backendCaption_(nullptr)
+        , backendValue_(nullptr)
+        , recorderCaption_(nullptr)
+        , recorderValue_(nullptr)
+        , outputCaption_(nullptr)
+        , outputEdit_(nullptr)
+        , messageCaption_(nullptr)
+        , messageEdit_(nullptr)
         , startButton_(nullptr)
         , stopButton_(nullptr)
+        , logEdit_(nullptr)
+        , regularFont_(nullptr)
+        , titleFont_(nullptr)
+        , monoFont_(nullptr)
+        , isOnline_(false)
+        , recorderState_(RecorderState::Standby)
+        , graphicsBackend_(GraphicsBackend::Unknown)
     {
+        SetRectEmpty(&pageContentRect_);
+        SetRectEmpty(&previewRect_);
+        preview_.isValid = false;
+        preview_.width = 0;
+        preview_.height = 0;
+    }
+
+    PluginVideoRecordMainWindow::~PluginVideoRecordMainWindow()
+    {
+        DestroyFonts();
     }
 
     int PluginVideoRecordMainWindow::Run(HINSTANCE instanceHandle, int showCommand)
@@ -41,6 +70,11 @@ namespace PluginVideoRecord
 
     bool PluginVideoRecordMainWindow::Create(HINSTANCE instanceHandle, int showCommand)
     {
+        INITCOMMONCONTROLSEX controls = {};
+        controls.dwSize = sizeof(controls);
+        controls.dwICC = ICC_TAB_CLASSES;
+        InitCommonControlsEx(&controls);
+
         WNDCLASSEXW windowClass = {};
         windowClass.cbSize = sizeof(windowClass);
         windowClass.hInstance = instanceHandle;
@@ -56,12 +90,12 @@ namespace PluginVideoRecord
         hwnd_ = CreateWindowExW(
             0,
             WindowClassName,
-            L"PluginVideoRecord 控制台",
-            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+            L"InterRec Controller",
+            WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            320,
-            180,
+            640,
+            520,
             nullptr,
             nullptr,
             instanceHandle,
@@ -95,21 +129,35 @@ namespace PluginVideoRecord
         switch (message)
         {
         case WM_CREATE:
+            if (!self->CreateFonts())
+            {
+                return -1;
+            }
             self->CreateControls();
+            self->LayoutControls();
+            self->ApplyPageVisibility();
+            self->AppendLogLine(L"[UI] 控制器已启动。");
             SetTimer(hwnd, RefreshTimerId, RefreshIntervalMs, nullptr);
             self->RefreshStatus();
+            self->RefreshLogs();
             return 0;
 
         case WM_COMMAND:
             switch (LOWORD(wParam))
             {
             case StartButtonId:
-                self->ipc_.SendCommand(CommandType::StartRecording);
+                self->AppendLogLine(
+                    self->ipc_.SendCommand(CommandType::StartRecording)
+                        ? L"[UI] 已发送开始录制命令。"
+                        : L"[UI] 发送开始录制命令失败。");
                 self->RefreshStatus();
                 return 0;
 
             case StopButtonId:
-                self->ipc_.SendCommand(CommandType::StopRecording);
+                self->AppendLogLine(
+                    self->ipc_.SendCommand(CommandType::StopRecording)
+                        ? L"[UI] 已发送停止录制命令。"
+                        : L"[UI] 发送停止录制命令失败。");
                 self->RefreshStatus();
                 return 0;
 
@@ -118,13 +166,40 @@ namespace PluginVideoRecord
             }
             break;
 
+        case WM_NOTIFY:
+            if (reinterpret_cast<LPNMHDR>(lParam)->hwndFrom == self->tabControl_ &&
+                reinterpret_cast<LPNMHDR>(lParam)->code == TCN_SELCHANGE)
+            {
+                self->ApplyPageVisibility();
+                return 0;
+            }
+            break;
+
+        case WM_SIZE:
+            self->LayoutControls();
+            self->ApplyPageVisibility();
+            return 0;
+
+        case WM_GETMINMAXINFO:
+        {
+            auto* minMaxInfo = reinterpret_cast<MINMAXINFO*>(lParam);
+            minMaxInfo->ptMinTrackSize.x = MinWindowWidth;
+            minMaxInfo->ptMinTrackSize.y = MinWindowHeight;
+            return 0;
+        }
+
         case WM_TIMER:
             if (wParam == RefreshTimerId)
             {
                 self->RefreshStatus();
+                self->RefreshLogs();
                 return 0;
             }
             break;
+
+        case WM_PAINT:
+            self->PaintPreview();
+            return 0;
 
         case WM_DESTROY:
             KillTimer(hwnd, RefreshTimerId);
@@ -136,44 +211,5 @@ namespace PluginVideoRecord
         }
 
         return DefWindowProcW(hwnd, message, wParam, lParam);
-    }
-
-    void PluginVideoRecordMainWindow::CreateControls()
-    {
-        communicationLabel_ = CreateWindowExW(0, L"STATIC", L"通信：离线", WS_CHILD | WS_VISIBLE, 24, 24, 240, 24, hwnd_, nullptr, nullptr, nullptr);
-        recorderLabel_ = CreateWindowExW(0, L"STATIC", L"状态：待机中", WS_CHILD | WS_VISIBLE, 24, 56, 240, 24, hwnd_, nullptr, nullptr, nullptr);
-        startButton_ = CreateWindowExW(0, L"BUTTON", L"开始录制", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 24, 96, 112, 32, hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(StartButtonId)), nullptr, nullptr);
-        stopButton_ = CreateWindowExW(0, L"BUTTON", L"结束录制", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 152, 96, 112, 32, hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(StopButtonId)), nullptr, nullptr);
-
-        HFONT fontHandle = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        SendMessageW(communicationLabel_, WM_SETFONT, reinterpret_cast<WPARAM>(fontHandle), TRUE);
-        SendMessageW(recorderLabel_, WM_SETFONT, reinterpret_cast<WPARAM>(fontHandle), TRUE);
-        SendMessageW(startButton_, WM_SETFONT, reinterpret_cast<WPARAM>(fontHandle), TRUE);
-        SendMessageW(stopButton_, WM_SETFONT, reinterpret_cast<WPARAM>(fontHandle), TRUE);
-    }
-
-    void PluginVideoRecordMainWindow::RefreshStatus()
-    {
-        SharedState state = {};
-        ResetSharedState(state);
-        ipc_.ReadState(state);
-
-        bool isOnline = state.protocolVersion == ProtocolVersion &&
-            state.connectionState == static_cast<LONG>(ConnectionState::Online) &&
-            static_cast<ULONGLONG>(state.heartbeatTickCount) + OfflineTimeoutMs >= GetTickCount64();
-
-        RecorderState recorderState = static_cast<RecorderState>(state.recorderState);
-        bool isRecording = recorderState == RecorderState::Recording;
-
-        UpdateLabel(communicationLabel_, isOnline ? L"通信：正常" : L"通信：离线");
-        UpdateLabel(recorderLabel_, isRecording ? L"状态：录制中" : L"状态：待机中");
-
-        EnableWindow(startButton_, isOnline && !isRecording);
-        EnableWindow(stopButton_, isOnline && isRecording);
-    }
-
-    void PluginVideoRecordMainWindow::UpdateLabel(HWND controlHandle, const std::wstring& text) const
-    {
-        SetWindowTextW(controlHandle, text.c_str());
     }
 }

@@ -12,6 +12,8 @@ Debug/
 Release/
 x64/
 x86/
+bin_verify/
+**/bin_verify/
 
 # C/C++
 *.ilk
@@ -32,3 +34,5 @@ x86/
 # Logs
 *.log
 
+# Recording outputs
+*.mp4

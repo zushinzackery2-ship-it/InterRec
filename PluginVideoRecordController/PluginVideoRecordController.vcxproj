@@ -58,7 +58,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>user32.lib;gdi32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -68,11 +68,15 @@
     <ClCompile Include="PluginVideoRecordControllerMain.cpp" />
     <ClCompile Include="PluginVideoRecordControllerIpc.cpp" />
     <ClCompile Include="PluginVideoRecordMainWindow.cpp" />
+    <ClCompile Include="PluginVideoRecordMainWindowLayout.cpp" />
+    <ClCompile Include="PluginVideoRecordMainWindowState.cpp" />
+    <ClCompile Include="PluginVideoRecordPreviewRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="PluginVideoRecordControllerIpc.h" />
     <ClInclude Include="PluginVideoRecordMainWindow.h" />
+    <ClInclude Include="PluginVideoRecordPreviewRenderer.h" />
     <ClInclude Include="..\Shared\PluginVideoRecordProtocol.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
