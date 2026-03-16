@@ -2,7 +2,6 @@
 .vs/
 .vscode/
 .idea/
-Local.Build.props
 *.suo
 *.user
 *.userosscache

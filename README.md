@@ -44,7 +44,7 @@ PluginVideoRecord/
 - `BepInEx`
   - `PluginVideoRecordLoaderMono` 需要目标游戏环境中已有可用的 `BepInEx 5`
   - `PluginVideoRecordLoaderIl2Cpp` 需要目标游戏环境中已有可用的 `BepInEx 6 IL2CPP`
-  - 仓库不再硬编码本地游戏目录，外部引用通过 `Local.Build.props` 或环境变量提供
+  - 仓库不再写死本地游戏路径，Mono 工程引用请在本地自行提供
 
 ## 构建
 
@@ -55,26 +55,10 @@ cd .\PluginVideoRecord
 .\build.bat
 ```
 
-构建前需要先配置外部游戏引用，推荐复制 `Local.Build.props.example` 为 `Local.Build.props` 后填写：
-
-- `PluginVideoRecordMonoBepInExCoreDir`
-  - Mono 目标游戏的 `BepInEx\core` 目录
-- `PluginVideoRecordMonoManagedDir`
-  - Mono 目标游戏的 `*_Data\Managed` 目录
-- `PluginVideoRecordIl2CppBepInExCoreDir`
-  - IL2CPP 目标游戏的 `BepInEx\core` 目录
-
-也可以改用环境变量：
-
-- `PLUGIN_VIDEO_RECORD_MONO_BEPINEX_CORE_DIR`
-- `PLUGIN_VIDEO_RECORD_MONO_MANAGED_DIR`
-- `PLUGIN_VIDEO_RECORD_IL2CPP_BEPINEX_CORE_DIR`
-
 说明：
 
 - `PluginVideoRecordHook` 会直接编译 `..\RainGui\RainGui\` 下的源码文件
 - `PluginVideoRecordLoaderMono.dll` 通过解决方案中的 `PluginVideoRecordLoaderMono` 工程编译
-- `build.bat` 在构建完解决方案后，会额外调用 `BuildIl2CppLoader.ps1` 离线编译 `PluginVideoRecordLoaderIl2Cpp.dll`
 - 如果 `RainGui` 不在默认相对路径，需要先调整工程里的包含路径和源码引用
 
 构建产物位于：
@@ -83,8 +67,9 @@ cd .\PluginVideoRecord
 bin\x64\Release\PluginVideoRecordHook.dll
 bin\x64\Release\PluginVideoRecordController.exe
 bin\x64\Release\PluginVideoRecordLoaderMono.dll
-bin\x64\Release\PluginVideoRecordLoaderIl2Cpp.dll
 ```
+
+`PluginVideoRecordLoaderIl2Cpp/` 当前提供的是源码，不接入默认解决方案构建。
 
 ## 使用方式
 

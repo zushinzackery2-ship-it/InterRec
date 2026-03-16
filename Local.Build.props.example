@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project>
-  <PropertyGroup>
-    <PluginVideoRecordMonoBepInExCoreDir>C:\Games\YourMonoGame\BepInEx\core</PluginVideoRecordMonoBepInExCoreDir>
-    <PluginVideoRecordMonoManagedDir>C:\Games\YourMonoGame\Game_Data\Managed</PluginVideoRecordMonoManagedDir>
-    <PluginVideoRecordIl2CppBepInExCoreDir>C:\Games\YourIl2CppGame\BepInEx\core</PluginVideoRecordIl2CppBepInExCoreDir>
-  </PropertyGroup>
-</Project>

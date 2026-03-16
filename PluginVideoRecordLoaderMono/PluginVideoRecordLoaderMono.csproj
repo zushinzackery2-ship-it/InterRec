@@ -21,10 +21,9 @@
     <Prefer32Bit>false</Prefer32Bit>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <Import Project="..\Local.Build.props" Condition="Exists('..\Local.Build.props')" />
   <PropertyGroup>
-    <PluginVideoRecordMonoBepInExCoreDir Condition="'$(PluginVideoRecordMonoBepInExCoreDir)' == ''">$(PLUGIN_VIDEO_RECORD_MONO_BEPINEX_CORE_DIR)</PluginVideoRecordMonoBepInExCoreDir>
-    <PluginVideoRecordMonoManagedDir Condition="'$(PluginVideoRecordMonoManagedDir)' == ''">$(PLUGIN_VIDEO_RECORD_MONO_MANAGED_DIR)</PluginVideoRecordMonoManagedDir>
+    <PluginVideoRecordMonoBepInExCoreDir Condition="'$(PluginVideoRecordMonoBepInExCoreDir)' == ''"></PluginVideoRecordMonoBepInExCoreDir>
+    <PluginVideoRecordMonoManagedDir Condition="'$(PluginVideoRecordMonoManagedDir)' == ''"></PluginVideoRecordMonoManagedDir>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -53,10 +52,10 @@
   <Target Name="ValidateLocalGameReferences" BeforeTargets="ResolveAssemblyReferences">
     <Error
       Condition="'$(PluginVideoRecordMonoBepInExCoreDir)' == ''"
-      Text="未配置 Mono BepInEx core 目录。请创建 Local.Build.props 或设置环境变量 PLUGIN_VIDEO_RECORD_MONO_BEPINEX_CORE_DIR。" />
+      Text="未配置 Mono BepInEx core 目录。请在本地设置 PluginVideoRecordMonoBepInExCoreDir。" />
     <Error
       Condition="'$(PluginVideoRecordMonoManagedDir)' == ''"
-      Text="未配置 Mono Managed 目录。请创建 Local.Build.props 或设置环境变量 PLUGIN_VIDEO_RECORD_MONO_MANAGED_DIR。" />
+      Text="未配置 Mono Managed 目录。请在本地设置 PluginVideoRecordMonoManagedDir。" />
     <Error
       Condition="!Exists('$(PluginVideoRecordMonoBepInExCoreDir)\BepInEx.dll')"
       Text="Mono BepInEx 引用不存在: $(PluginVideoRecordMonoBepInExCoreDir)\BepInEx.dll" />
