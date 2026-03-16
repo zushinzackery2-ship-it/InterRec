@@ -1,11 +1,11 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("PluginVideoRecordLoader")]
-[assembly: AssemblyDescription("BepInEx loader for PluginVideoRecord")]
+[assembly: AssemblyTitle("PluginVideoRecordLoaderMono")]
+[assembly: AssemblyDescription("Mono BepInEx loader for PluginVideoRecord")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Rain")]
-[assembly: AssemblyProduct("PluginVideoRecordLoader")]
+[assembly: AssemblyProduct("PluginVideoRecordLoaderMono")]
 [assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

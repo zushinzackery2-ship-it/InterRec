@@ -6,7 +6,7 @@ Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "PluginVideoRecordHook", "Pl
 EndProject
 Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "PluginVideoRecordController", "PluginVideoRecordController\PluginVideoRecordController.vcxproj", "{2F923358-10A1-4A74-8F52-2AF6C4E1B102}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginVideoRecordLoader", "PluginVideoRecordLoader\PluginVideoRecordLoader.csproj", "{AB6851D0-9A6D-4EF9-8803-7C3F8B9FB103}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PluginVideoRecordLoaderMono", "PluginVideoRecordLoaderMono\PluginVideoRecordLoaderMono.csproj", "{AB6851D0-9A6D-4EF9-8803-7C3F8B9FB103}"
 EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,5 +1,8 @@
 # Visual Studio
 .vs/
+.vscode/
+.idea/
+Local.Build.props
 *.suo
 *.user
 *.userosscache
@@ -33,6 +36,9 @@ bin_verify/
 
 # Logs
 *.log
+*.tmp
+*.bak
+*.dmp
 
 # Recording outputs
 *.mp4

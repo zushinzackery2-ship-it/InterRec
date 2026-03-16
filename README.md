@@ -20,8 +20,12 @@
   - 负责统一图形 Hook、视频采集、进程音频采集、MP4 混流、IPC 服务
 - `PluginVideoRecordController/`
   - 独立 Win32 控制器
-- `PluginVideoRecordLoader/`
-  - BepInEx Loader 插件
+- `PluginVideoRecordLoaderMono/`
+  - `BepInEx 5 / Mono` Loader 插件
+- `PluginVideoRecordLoaderIl2Cpp/`
+  - `BepInEx 6 / IL2CPP` Loader 插件源码
+- `PluginVideoRecordLoaderShared/`
+  - Mono / IL2CPP 共用的原生 DLL 加载逻辑
 - `Shared/`
   - IPC 协议和共享常量
 
@@ -38,7 +42,9 @@ PluginVideoRecord/
 ```
 
 - `BepInEx`
-  - `PluginVideoRecordLoader` 需要目标游戏环境中已有可用的 `BepInEx 5`
+  - `PluginVideoRecordLoaderMono` 需要目标游戏环境中已有可用的 `BepInEx 5`
+  - `PluginVideoRecordLoaderIl2Cpp` 需要目标游戏环境中已有可用的 `BepInEx 6 IL2CPP`
+  - 仓库不再硬编码本地游戏目录，外部引用通过 `Local.Build.props` 或环境变量提供
 
 ## 构建
 
@@ -49,9 +55,26 @@ cd .\PluginVideoRecord
 .\build.bat
 ```
 
+构建前需要先配置外部游戏引用，推荐复制 `Local.Build.props.example` 为 `Local.Build.props` 后填写：
+
+- `PluginVideoRecordMonoBepInExCoreDir`
+  - Mono 目标游戏的 `BepInEx\core` 目录
+- `PluginVideoRecordMonoManagedDir`
+  - Mono 目标游戏的 `*_Data\Managed` 目录
+- `PluginVideoRecordIl2CppBepInExCoreDir`
+  - IL2CPP 目标游戏的 `BepInEx\core` 目录
+
+也可以改用环境变量：
+
+- `PLUGIN_VIDEO_RECORD_MONO_BEPINEX_CORE_DIR`
+- `PLUGIN_VIDEO_RECORD_MONO_MANAGED_DIR`
+- `PLUGIN_VIDEO_RECORD_IL2CPP_BEPINEX_CORE_DIR`
+
 说明：
 
 - `PluginVideoRecordHook` 会直接编译 `..\RainGui\RainGui\` 下的源码文件
+- `PluginVideoRecordLoaderMono.dll` 通过解决方案中的 `PluginVideoRecordLoaderMono` 工程编译
+- `build.bat` 在构建完解决方案后，会额外调用 `BuildIl2CppLoader.ps1` 离线编译 `PluginVideoRecordLoaderIl2Cpp.dll`
 - 如果 `RainGui` 不在默认相对路径，需要先调整工程里的包含路径和源码引用
 
 构建产物位于：
@@ -59,17 +82,21 @@ cd .\PluginVideoRecord
 ```text
 bin\x64\Release\PluginVideoRecordHook.dll
 bin\x64\Release\PluginVideoRecordController.exe
-bin\x64\Release\PluginVideoRecordLoader.dll
+bin\x64\Release\PluginVideoRecordLoaderMono.dll
+bin\x64\Release\PluginVideoRecordLoaderIl2Cpp.dll
 ```
 
 ## 使用方式
 
-1. 将 `PluginVideoRecordLoader.dll` 和 `PluginVideoRecordHook.dll` 放到同一个 `BepInEx\plugins` 子目录。
-2. 启动游戏，让 BepInEx 自动加载 `PluginVideoRecordLoader.dll`。
-3. 运行 `PluginVideoRecordController.exe`。
-4. 在控制器的 `录制` 页点击“开始录制”或“结束录制”。
-5. 需要时切到 `预览` 页查看实时缩略图，切到 `日志` 页查看详细日志。
-6. 录制文件会写到游戏目录下的 `PluginVideoRecord` 文件夹。
+1. `Mono / BepInEx 5` 游戏：
+   将 `PluginVideoRecordLoaderMono.dll` 和 `PluginVideoRecordHook.dll` 放到同一个 `BepInEx\plugins` 子目录。
+2. `IL2CPP / BepInEx 6` 游戏：
+   将 `PluginVideoRecordLoaderIl2Cpp.dll` 和 `PluginVideoRecordHook.dll` 放到同一个 `BepInEx\plugins` 子目录。
+3. 启动游戏，让 BepInEx 自动加载对应的 Loader。
+4. 运行 `PluginVideoRecordController.exe`。
+5. 在控制器的 `录制` 页点击“开始录制”或“结束录制”。
+6. 需要时切到 `预览` 页查看实时缩略图，切到 `日志` 页查看详细日志。
+7. 录制文件会写到游戏目录下的 `PluginVideoRecord` 文件夹。
 
 ## 当前行为说明
 
