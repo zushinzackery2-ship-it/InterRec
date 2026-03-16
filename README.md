@@ -1,6 +1,6 @@
 # InterRec
 
-`InterRec` 是一个自用的游戏进程内录制工具。
+`InterRec` 游戏进程内录制工具。
 
 ## 主要功能
 
