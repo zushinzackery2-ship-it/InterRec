@@ -87,11 +87,8 @@ bin\x64\Release\PluginVideoRecordLoaderMono.dll
 
 本项目采用 MIT 许可证，详见根目录 `LICENSE`。
 
-## 封底
+<div align="center">
 
-- License：MIT
-- Platform：Windows x64
-- Toolchain：Visual Studio 2022
-- Build：x64 Release / MT
-- Runtime：BepInEx Loader + Native Hook + Win32 Controller
-- Keywords：DX11 / DX12 / H.264 / IPC / Process Audio Capture
+**Platform:** Windows x64 | **License:** MIT
+
+</div>
