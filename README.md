@@ -4,6 +4,13 @@
 
 游戏进程内录制工具，基于 RainGui 图形 Hook，支持 DX11 / DX12
 
+<p>
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-2ea44f" />
+    <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6" />
+    <img alt="Toolchain" src="https://img.shields.io/badge/Toolchain-VS2022-5C2D91" />
+    <img alt="Build" src="https://img.shields.io/badge/Build-Release%20%7C%20MT-FFB000" />
+</p>
+
 <!-- 在这里放一张效果截图或 GIF -->
 <!-- ![InterRec Demo](docs/demo.gif) -->
 
@@ -75,3 +82,16 @@ bin\x64\Release\PluginVideoRecordLoaderMono.dll
 3. 运行 `PluginVideoRecordController.exe`
 4. 在控制器 `录制` 页操作开始 / 结束
 5. 录制文件写入游戏目录 `PluginVideoRecord\` 文件夹
+
+## 许可
+
+本项目采用 MIT 许可证，详见根目录 `LICENSE`。
+
+## 封底
+
+- License：MIT
+- Platform：Windows x64
+- Toolchain：Visual Studio 2022
+- Build：x64 Release / MT
+- Runtime：BepInEx Loader + Native Hook + Win32 Controller
+- Keywords：DX11 / DX12 / H.264 / IPC / Process Audio Capture
