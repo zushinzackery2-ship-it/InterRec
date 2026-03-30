@@ -237,6 +237,7 @@ namespace PluginVideoRecord
         writer_.Stop();
         dx11Capture_.Shutdown();
         dx12Capture_.Shutdown();
+        vulkanCapture_.Shutdown();
 
         startQpcHns_ = 0;
         qpcReady_ = false;

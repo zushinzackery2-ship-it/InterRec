@@ -9,6 +9,7 @@ namespace PluginVideoRecord
         : stopEvent_(nullptr)
         , processId_(0)
         , recordingStartQpcHns_(0)
+        , nextAudioSampleTimeHns_(0)
         , writer_(nullptr)
         , running_(false)
         , stopRequested_(false)
@@ -40,6 +41,7 @@ namespace PluginVideoRecord
             std::lock_guard<std::mutex> lock(mutex_);
             processId_ = processId;
             recordingStartQpcHns_ = recordingStartQpcHns;
+            nextAudioSampleTimeHns_ = 0;
             writer_ = writer;
             running_ = true;
             stopRequested_ = false;
@@ -97,6 +99,7 @@ namespace PluginVideoRecord
         writer_ = nullptr;
         processId_ = 0;
         recordingStartQpcHns_ = 0;
+        nextAudioSampleTimeHns_ = 0;
     }
     bool PluginVideoRecordProcessAudioCapture::TryGetLastError(std::wstring& error) const
     {
@@ -224,11 +227,10 @@ namespace PluginVideoRecord
                 }
 
                 CapturedAudioPacket packet = {};
-                packet.sampleTimeHns = qpcPosition > static_cast<UINT64>(recordingStartQpcHns_)
-                    ? static_cast<LONGLONG>(qpcPosition - recordingStartQpcHns_)
-                    : 0;
                 packet.durationHns =
                     static_cast<LONGLONG>(framesAvailable) * 10000000LL / DefaultAudioSampleRate;
+                packet.sampleTimeHns = nextAudioSampleTimeHns_;
+                nextAudioSampleTimeHns_ += packet.durationHns;
                 packet.samples.resize(static_cast<size_t>(framesAvailable) * bytesPerFrame);
 
                 if (packetFlags & AUDCLNT_BUFFERFLAGS_SILENT)

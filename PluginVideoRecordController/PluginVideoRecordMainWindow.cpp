@@ -1,20 +1,7 @@
 #include "pch.h"
 
 #include "PluginVideoRecordMainWindow.h"
-
-namespace
-{
-    constexpr UINT_PTR RefreshTimerId = 1;
-    constexpr UINT RefreshIntervalMs = 50;
-    constexpr int StartButtonId = 1001;
-    constexpr int StopButtonId = 1002;
-    constexpr int InitialWindowWidth = 460;
-    constexpr int InitialWindowHeight = 360;
-    constexpr int MinWindowWidth = 460;
-    constexpr int MinWindowHeight = 340;
-    constexpr wchar_t WindowClassName[] = L"PluginVideoRecordControllerWindow";
-    constexpr wchar_t PreviewPanelClassName[] = L"PluginVideoRecordPreviewPanel";
-}
+#include "PluginVideoRecordMainWindowInternal.h"
 
 namespace PluginVideoRecord
 {
@@ -26,8 +13,16 @@ namespace PluginVideoRecord
         , communicationValue_(nullptr)
         , backendCaption_(nullptr)
         , backendValue_(nullptr)
+        , recordBackendCaption_(nullptr)
+        , backendDx11Radio_(nullptr)
+        , backendDx12Radio_(nullptr)
+        , backendVulkanRadio_(nullptr)
         , recorderCaption_(nullptr)
         , recorderValue_(nullptr)
+        , vulkanCaption_(nullptr)
+        , vulkanEnabledCheck_(nullptr)
+        , vulkanDescription_(nullptr)
+        , vulkanHint_(nullptr)
         , outputCaption_(nullptr)
         , outputEdit_(nullptr)
         , messageCaption_(nullptr)
@@ -37,17 +32,23 @@ namespace PluginVideoRecord
         , logEdit_(nullptr)
         , previewPanel_(nullptr)
         , regularFont_(nullptr)
+        , smallFont_(nullptr)
         , titleFont_(nullptr)
         , monoFont_(nullptr)
         , isOnline_(false)
         , recorderState_(RecorderState::Standby)
-        , graphicsBackend_(GraphicsBackend::Unknown)
+        , availableBackendMask_(GraphicsBackendMask_None)
+        , selectedBackend_(GraphicsBackend::Unknown)
+        , activeRecordingBackend_(GraphicsBackend::Unknown)
+        , isVulkanLayerEnabled_(false)
+        , isForceAutoHookEnabled_(false)
     {
         SetRectEmpty(&pageContentRect_);
         SetRectEmpty(&previewRect_);
         preview_.isValid = false;
         preview_.width = 0;
         preview_.height = 0;
+        preview_.sampleTimeHns = 0;
     }
 
     PluginVideoRecordMainWindow::~PluginVideoRecordMainWindow()
@@ -82,7 +83,7 @@ namespace PluginVideoRecord
         WNDCLASSEXW windowClass = {};
         windowClass.cbSize = sizeof(windowClass);
         windowClass.hInstance = instanceHandle;
-        windowClass.lpszClassName = WindowClassName;
+        windowClass.lpszClassName = MainWindowInternal::WindowClassName;
         windowClass.lpfnWndProc = WindowProc;
         windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
         windowClass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
@@ -94,7 +95,7 @@ namespace PluginVideoRecord
         WNDCLASSEXW previewPanelClass = {};
         previewPanelClass.cbSize = sizeof(previewPanelClass);
         previewPanelClass.hInstance = instanceHandle;
-        previewPanelClass.lpszClassName = PreviewPanelClassName;
+        previewPanelClass.lpszClassName = MainWindowInternal::PreviewPanelClassName;
         previewPanelClass.lpfnWndProc = PreviewPanelProc;
         previewPanelClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
         previewPanelClass.hbrBackground = nullptr;
@@ -105,13 +106,13 @@ namespace PluginVideoRecord
 
         hwnd_ = CreateWindowExW(
             0,
-            WindowClassName,
+            MainWindowInternal::WindowClassName,
             L"InterRec Controller",
             WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_SIZEBOX | WS_CLIPCHILDREN,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            InitialWindowWidth,
-            InitialWindowHeight,
+            MainWindowInternal::InitialWindowWidth,
+            MainWindowInternal::InitialWindowHeight,
             nullptr,
             nullptr,
             instanceHandle,
@@ -124,144 +125,5 @@ namespace PluginVideoRecord
         ShowWindow(hwnd_, showCommand);
         UpdateWindow(hwnd_);
         return true;
-    }
-
-    LRESULT CALLBACK PluginVideoRecordMainWindow::PreviewPanelProc(
-        HWND hwnd,
-        UINT message,
-        WPARAM wParam,
-        LPARAM lParam)
-    {
-        auto* self = reinterpret_cast<PluginVideoRecordMainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
-        if (message == WM_NCCREATE)
-        {
-            auto* createStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
-            self = static_cast<PluginVideoRecordMainWindow*>(createStruct->lpCreateParams);
-            SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
-        }
-
-        if (!self)
-        {
-            return DefWindowProcW(hwnd, message, wParam, lParam);
-        }
-
-        switch (message)
-        {
-        case WM_ERASEBKGND:
-            return 1;
-
-        case WM_PAINT:
-            self->PaintPreview();
-            return 0;
-
-        default:
-            break;
-        }
-
-        return DefWindowProcW(hwnd, message, wParam, lParam);
-    }
-
-    LRESULT CALLBACK PluginVideoRecordMainWindow::WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-    {
-        auto* self = reinterpret_cast<PluginVideoRecordMainWindow*>(GetWindowLongPtrW(hwnd, GWLP_USERDATA));
-        if (message == WM_NCCREATE)
-        {
-            auto* createStruct = reinterpret_cast<CREATESTRUCTW*>(lParam);
-            self = static_cast<PluginVideoRecordMainWindow*>(createStruct->lpCreateParams);
-            SetWindowLongPtrW(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(self));
-            self->hwnd_ = hwnd;
-        }
-
-        if (!self)
-        {
-            return DefWindowProcW(hwnd, message, wParam, lParam);
-        }
-
-        switch (message)
-        {
-        case WM_CREATE:
-            if (!self->CreateFonts())
-            {
-                return -1;
-            }
-            self->CreateControls();
-            self->LayoutControls();
-            self->ApplyPageVisibility();
-            self->AppendLogLine(L"[UI] 控制器已启动。");
-            SetTimer(hwnd, RefreshTimerId, RefreshIntervalMs, nullptr);
-            self->RefreshStatus();
-            self->RefreshLogs();
-            return 0;
-
-        case WM_COMMAND:
-            switch (LOWORD(wParam))
-            {
-            case StartButtonId:
-                self->AppendLogLine(
-                    self->ipc_.SendCommand(CommandType::StartRecording)
-                        ? L"[UI] 已发送开始录制命令。"
-                        : L"[UI] 发送开始录制命令失败。");
-                self->RefreshStatus();
-                return 0;
-
-            case StopButtonId:
-                self->AppendLogLine(
-                    self->ipc_.SendCommand(CommandType::StopRecording)
-                        ? L"[UI] 已发送停止录制命令。"
-                        : L"[UI] 发送停止录制命令失败。");
-                self->RefreshStatus();
-                return 0;
-
-            default:
-                break;
-            }
-            break;
-
-        case WM_NOTIFY:
-            if (reinterpret_cast<LPNMHDR>(lParam)->hwndFrom == self->tabControl_ &&
-                reinterpret_cast<LPNMHDR>(lParam)->code == TCN_SELCHANGE)
-            {
-                self->ApplyPageVisibility();
-                return 0;
-            }
-            break;
-
-        case WM_SIZE:
-            self->LayoutControls();
-            self->ApplyPageVisibility();
-            RedrawWindow(
-                hwnd,
-                nullptr,
-                nullptr,
-                RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_ERASE | RDW_FRAME);
-            return 0;
-
-        case WM_GETMINMAXINFO:
-        {
-            auto* minMaxInfo = reinterpret_cast<MINMAXINFO*>(lParam);
-            minMaxInfo->ptMinTrackSize.x = MinWindowWidth;
-            minMaxInfo->ptMinTrackSize.y = MinWindowHeight;
-            return 0;
-        }
-
-        case WM_TIMER:
-            if (wParam == RefreshTimerId)
-            {
-                self->RefreshStatus();
-                self->RefreshLogs();
-                return 0;
-            }
-            break;
-
-        case WM_DESTROY:
-            KillTimer(hwnd, RefreshTimerId);
-            PostQuitMessage(0);
-            return 0;
-
-        default:
-            break;
-        }
-
-        return DefWindowProcW(hwnd, message, wParam, lParam);
     }
 }

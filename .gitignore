@@ -32,6 +32,8 @@ bin_verify/
 
 # C#
 *.cache
+*.pyc
+__pycache__/
 
 # Logs
 *.log

@@ -1,48 +1,30 @@
 #include "pch.h"
 
+#include "../Shared/PluginVideoRecordScopedMutexLock.h"
+
 #include "PluginVideoRecordIpcServer.h"
-
-namespace
-{
-    void CopyWideText(wchar_t* destination, size_t destinationCount, const std::wstring& value)
-    {
-        if (!destination || destinationCount == 0)
-        {
-            return;
-        }
-
-        wcsncpy_s(destination, destinationCount, value.c_str(), _TRUNCATE);
-    }
-
-    std::wstring BuildTimestampedLogLine(const std::wstring& message)
-    {
-        SYSTEMTIME localTime = {};
-        GetLocalTime(&localTime);
-
-        wchar_t buffer[PluginVideoRecord::MaxLogLine] = {};
-        swprintf_s(
-            buffer,
-            L"[%02u:%02u:%02u] %ls",
-            localTime.wHour,
-            localTime.wMinute,
-            localTime.wSecond,
-            message.c_str());
-        return buffer;
-    }
-}
 
 namespace PluginVideoRecord
 {
     PluginVideoRecordIpcServer::PluginVideoRecordIpcServer()
-        : mappingHandle_(nullptr)
+        : registryMappingHandle_(nullptr)
+        , registryMutexHandle_(nullptr)
+        , mappingHandle_(nullptr)
         , logMappingHandle_(nullptr)
         , commandEvent_(nullptr)
+        , stateMutexHandle_(nullptr)
+        , registryView_(nullptr)
         , stateView_(nullptr)
         , logView_(nullptr)
         , running_(false)
         , pendingSequence_(0)
         , pendingCommand_(static_cast<LONG>(CommandType::None))
+        , processId_(0)
+        , processStartTime_(0)
+        , sessionId_(0)
+        , sessionSlotIndex_(-1)
         , consumedSequence_(0)
+        , observedSequence_(0)
     {
     }
 
@@ -53,15 +35,33 @@ namespace PluginVideoRecord
 
     bool PluginVideoRecordIpcServer::Start()
     {
+        if (!StartRegistry())
+        {
+            return false;
+        }
+
+        if (!ClaimSessionSlot())
+        {
+            StopRegistry();
+            return false;
+        }
+
+        stateMappingName_ = BuildStateMappingName(sessionId_);
+        logMappingName_ = BuildLogMappingName(sessionId_);
+        previewMappingName_ = BuildPreviewMappingName(sessionId_);
+        commandEventName_ = BuildCommandEventName(sessionId_);
+        stateMutexName_ = BuildStateMutexName(sessionId_);
+
         mappingHandle_ = CreateFileMappingW(
             INVALID_HANDLE_VALUE,
             nullptr,
             PAGE_READWRITE,
             0,
             sizeof(SharedState),
-            MappingName);
+            stateMappingName_.c_str());
         if (!mappingHandle_)
         {
+            Stop();
             return false;
         }
 
@@ -69,7 +69,7 @@ namespace PluginVideoRecord
             MapViewOfFile(mappingHandle_, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SharedState)));
         if (!stateView_)
         {
-            CloseHandles();
+            Stop();
             return false;
         }
 
@@ -79,10 +79,10 @@ namespace PluginVideoRecord
             PAGE_READWRITE,
             0,
             sizeof(LogBuffer),
-            LogMappingName);
+            logMappingName_.c_str());
         if (!logMappingHandle_)
         {
-            CloseHandles();
+            Stop();
             return false;
         }
 
@@ -90,25 +90,37 @@ namespace PluginVideoRecord
             MapViewOfFile(logMappingHandle_, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(LogBuffer)));
         if (!logView_)
         {
-            CloseHandles();
+            Stop();
             return false;
         }
 
-        commandEvent_ = CreateEventW(nullptr, FALSE, FALSE, CommandEventName);
+        commandEvent_ = CreateEventW(nullptr, FALSE, FALSE, commandEventName_.c_str());
         if (!commandEvent_)
         {
-            CloseHandles();
+            Stop();
+            return false;
+        }
+
+        stateMutexHandle_ = CreateMutexW(nullptr, FALSE, stateMutexName_.c_str());
+        if (!stateMutexHandle_)
+        {
+            Stop();
             return false;
         }
 
         ResetSharedState(*stateView_);
         ResetLogBuffer(*logView_);
-        InterlockedExchange(&stateView_->connectionState, static_cast<LONG>(ConnectionState::Online));
-        InterlockedExchange(&stateView_->processId, static_cast<LONG>(GetCurrentProcessId()));
-        InterlockedExchange64(&stateView_->heartbeatTickCount, static_cast<LONGLONG>(GetTickCount64()));
+        WriteStateLocked(
+            [this]()
+            {
+                InterlockedExchange(&stateView_->connectionState, static_cast<LONG>(ConnectionState::Online));
+                InterlockedExchange(&stateView_->processId, static_cast<LONG>(processId_));
+                InterlockedExchange64(&stateView_->heartbeatTickCount, static_cast<LONGLONG>(GetTickCount64()));
+            });
 
         running_.store(true);
         heartbeatThread_ = std::thread(&PluginVideoRecordIpcServer::HeartbeatThread, this);
+        UpdateSessionHeartbeat();
         AppendLog(L"IPC 服务已启动。");
         return true;
     }
@@ -129,23 +141,40 @@ namespace PluginVideoRecord
 
         if (stateView_)
         {
-            std::lock_guard<std::mutex> lock(stateMutex_);
-            InterlockedExchange(&stateView_->connectionState, static_cast<LONG>(ConnectionState::Offline));
-            InterlockedExchange64(&stateView_->heartbeatTickCount, static_cast<LONGLONG>(GetTickCount64()));
+            WriteStateLocked(
+                [this]()
+                {
+                    InterlockedExchange(&stateView_->connectionState, static_cast<LONG>(ConnectionState::Offline));
+                    InterlockedExchange64(&stateView_->heartbeatTickCount, static_cast<LONGLONG>(GetTickCount64()));
+                });
         }
 
+        ReleaseSessionSlot();
         CloseHandles();
+        StopRegistry();
+    }
+
+    ULONGLONG PluginVideoRecordIpcServer::GetSessionId() const
+    {
+        return sessionId_;
     }
 
     bool PluginVideoRecordIpcServer::TryPeekCommand(CommandType& commandType, LONG& sequence) const
     {
-        sequence = pendingSequence_.load();
-        if (sequence == 0 || sequence == consumedSequence_)
+        sequence = 0;
+        if (!stateView_)
         {
             return false;
         }
 
-        commandType = static_cast<CommandType>(pendingCommand_.load());
+        const LONG liveSequence = stateView_->commandSequence;
+        if (liveSequence == 0 || liveSequence == consumedSequence_)
+        {
+            return false;
+        }
+
+        sequence = liveSequence;
+        commandType = static_cast<CommandType>(stateView_->commandType);
         return true;
     }
 
@@ -157,68 +186,48 @@ namespace PluginVideoRecord
         }
 
         consumedSequence_ = sequence;
+        observedSequence_ = sequence;
 
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        InterlockedExchange(&stateView_->acknowledgedSequence, sequence);
-        InterlockedExchange(&stateView_->lastHandledCommandType, static_cast<LONG>(commandType));
-    }
-
-    void PluginVideoRecordIpcServer::SetRecorderState(
-        RecorderState recorderState,
-        const std::wstring& outputPath,
-        const std::wstring& message,
-        LONG errorCode)
-    {
-        if (!stateView_)
-        {
-            return;
-        }
-
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        InterlockedExchange(&stateView_->recorderState, static_cast<LONG>(recorderState));
-        InterlockedExchange(&stateView_->lastErrorCode, errorCode);
-        CopyWideText(stateView_->currentOutputPath, _countof(stateView_->currentOutputPath), outputPath);
-        CopyWideText(stateView_->lastErrorMessage, _countof(stateView_->lastErrorMessage), message);
-    }
-
-    void PluginVideoRecordIpcServer::SetGraphicsBackend(GraphicsBackend graphicsBackend)
-    {
-        if (!stateView_)
-        {
-            return;
-        }
-
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        InterlockedExchange(&stateView_->graphicsBackend, static_cast<LONG>(graphicsBackend));
-    }
-
-    void PluginVideoRecordIpcServer::AppendLog(const std::wstring& message)
-    {
-        if (!logView_ || message.empty())
-        {
-            return;
-        }
-
-        std::lock_guard<std::mutex> lock(logMutex_);
-        const LONG nextSequence = logView_->writeSequence + 1;
-        LogEntry& entry = logView_->entries[(nextSequence - 1) % LogEntryCount];
-        entry.sequence = 0;
-        CopyWideText(entry.text, _countof(entry.text), BuildTimestampedLogLine(message));
-        InterlockedExchange(&entry.sequence, nextSequence);
-        InterlockedExchange(&logView_->writeSequence, nextSequence);
+        WriteStateLocked(
+            [this, commandType, sequence]()
+            {
+                InterlockedExchange(&stateView_->acknowledgedSequence, sequence);
+                InterlockedExchange(&stateView_->lastHandledCommandType, static_cast<LONG>(commandType));
+            });
     }
 
     void PluginVideoRecordIpcServer::HeartbeatThread()
     {
         while (running_.load())
         {
-            DWORD waitResult = WaitForSingleObject(commandEvent_, 500);
-            UpdateHeartbeat();
-
-            if (waitResult == WAIT_OBJECT_0 && stateView_)
+            if (commandEvent_)
             {
-                pendingSequence_.store(stateView_->commandSequence);
-                pendingCommand_.store(stateView_->commandType);
+                WaitForSingleObject(commandEvent_, 500);
+            }
+            else
+            {
+                Sleep(500);
+            }
+
+            UpdateHeartbeat();
+            UpdateSessionHeartbeat();
+
+            if (stateView_)
+            {
+                const LONG liveSequence = stateView_->commandSequence;
+                if (liveSequence != 0 && liveSequence != observedSequence_)
+                {
+                    observedSequence_ = liveSequence;
+                    const CommandType liveCommandType = static_cast<CommandType>(stateView_->commandType);
+                    wchar_t buffer[96] = {};
+                    swprintf_s(
+                        buffer,
+                        L"IPC 观察到命令：type=%ld seq=%ld ack=%ld。",
+                        static_cast<LONG>(liveCommandType),
+                        liveSequence,
+                        stateView_->acknowledgedSequence);
+                    AppendLog(buffer);
+                }
             }
         }
     }
@@ -230,42 +239,13 @@ namespace PluginVideoRecord
             return;
         }
 
-        std::lock_guard<std::mutex> lock(stateMutex_);
-        InterlockedExchange(&stateView_->connectionState, static_cast<LONG>(ConnectionState::Online));
-        InterlockedExchange(&stateView_->processId, static_cast<LONG>(GetCurrentProcessId()));
-        InterlockedExchange64(&stateView_->heartbeatTickCount, static_cast<LONGLONG>(GetTickCount64()));
+        WriteStateLocked(
+            [this]()
+            {
+                InterlockedExchange(&stateView_->connectionState, static_cast<LONG>(ConnectionState::Online));
+                InterlockedExchange(&stateView_->processId, static_cast<LONG>(processId_));
+                InterlockedExchange64(&stateView_->heartbeatTickCount, static_cast<LONGLONG>(GetTickCount64()));
+            });
     }
 
-    void PluginVideoRecordIpcServer::CloseHandles()
-    {
-        if (logView_)
-        {
-            UnmapViewOfFile(logView_);
-            logView_ = nullptr;
-        }
-
-        if (stateView_)
-        {
-            UnmapViewOfFile(stateView_);
-            stateView_ = nullptr;
-        }
-
-        if (commandEvent_)
-        {
-            CloseHandle(commandEvent_);
-            commandEvent_ = nullptr;
-        }
-
-        if (logMappingHandle_)
-        {
-            CloseHandle(logMappingHandle_);
-            logMappingHandle_ = nullptr;
-        }
-
-        if (mappingHandle_)
-        {
-            CloseHandle(mappingHandle_);
-            mappingHandle_ = nullptr;
-        }
-    }
 }

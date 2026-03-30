@@ -67,17 +67,28 @@
     </ClCompile>
     <ClCompile Include="PluginVideoRecordControllerMain.cpp" />
     <ClCompile Include="PluginVideoRecordControllerIpc.cpp" />
+    <ClCompile Include="PluginVideoRecordControllerIpcChannels.cpp" />
+    <ClCompile Include="PluginVideoRecordControllerIpcSession.cpp" />
     <ClCompile Include="PluginVideoRecordMainWindow.cpp" />
+    <ClCompile Include="PluginVideoRecordMainWindowCreate.cpp" />
     <ClCompile Include="PluginVideoRecordMainWindowLayout.cpp" />
     <ClCompile Include="PluginVideoRecordMainWindowState.cpp" />
+    <ClCompile Include="PluginVideoRecordMainWindowWindowProc.cpp" />
     <ClCompile Include="PluginVideoRecordPreviewRenderer.cpp" />
+    <ClCompile Include="PluginVideoRecordVulkanLayer.cpp" />
+    <ClCompile Include="PluginVideoRecordVulkanLayerManifest.cpp" />
+    <ClCompile Include="PluginVideoRecordVulkanLayerPaths.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="PluginVideoRecordControllerIpc.h" />
     <ClInclude Include="PluginVideoRecordMainWindow.h" />
+    <ClInclude Include="PluginVideoRecordMainWindowInternal.h" />
     <ClInclude Include="PluginVideoRecordPreviewRenderer.h" />
+    <ClInclude Include="PluginVideoRecordVulkanLayer.h" />
+    <ClInclude Include="PluginVideoRecordVulkanLayerInternal.h" />
     <ClInclude Include="..\Shared\PluginVideoRecordProtocol.h" />
+    <ClInclude Include="..\Shared\PluginVideoRecordScopedMutexLock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

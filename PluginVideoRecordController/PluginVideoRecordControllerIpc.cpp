@@ -1,26 +1,54 @@
 #include "pch.h"
 
+#include "../Shared/PluginVideoRecordScopedMutexLock.h"
+
 #include "PluginVideoRecordControllerIpc.h"
 
 namespace PluginVideoRecord
 {
     PluginVideoRecordControllerIpc::PluginVideoRecordControllerIpc()
-        : stateMappingHandle_(nullptr)
+        : registryMappingHandle_(nullptr)
+        , registryMutexHandle_(nullptr)
+        , stateMappingHandle_(nullptr)
         , previewMappingHandle_(nullptr)
         , logMappingHandle_(nullptr)
         , commandEvent_(nullptr)
+        , stateMutexHandle_(nullptr)
+        , registryView_(nullptr)
         , stateView_(nullptr)
         , previewView_(nullptr)
         , logView_(nullptr)
+        , controllerProcessId_(GetCurrentProcessId())
+        , claimedSlotIndex_(-1)
+        , claimedSessionId_(0)
         , lastLogSequence_(0)
     {
     }
 
     PluginVideoRecordControllerIpc::~PluginVideoRecordControllerIpc()
     {
+        ReleaseSessionLease();
         CloseLogHandles();
         ClosePreviewHandles();
         CloseStateHandles();
+
+        if (registryView_)
+        {
+            UnmapViewOfFile(registryView_);
+            registryView_ = nullptr;
+        }
+
+        if (registryMutexHandle_)
+        {
+            CloseHandle(registryMutexHandle_);
+            registryMutexHandle_ = nullptr;
+        }
+
+        if (registryMappingHandle_)
+        {
+            CloseHandle(registryMappingHandle_);
+            registryMappingHandle_ = nullptr;
+        }
     }
 
     bool PluginVideoRecordControllerIpc::ReadState(SharedState& state)
@@ -31,8 +59,38 @@ namespace PluginVideoRecord
             return false;
         }
 
-        CopyMemory(&state, stateView_, sizeof(SharedState));
-        return true;
+        for (int attempt = 0; attempt < 64; ++attempt)
+        {
+            const LONG beginSequence = stateView_->stateSequence;
+            if ((beginSequence & 1) != 0)
+            {
+                Sleep(0);
+                SwitchToThread();
+                continue;
+            }
+
+            MemoryBarrier();
+            CopyMemory(&state, stateView_, sizeof(SharedState));
+            MemoryBarrier();
+
+            const LONG endSequence = stateView_->stateSequence;
+            if (beginSequence == endSequence && (endSequence & 1) == 0)
+            {
+                if (state.protocolVersion == ProtocolVersion)
+                {
+                    return true;
+                }
+
+                CloseStateHandles();
+                break;
+            }
+
+            Sleep(0);
+            SwitchToThread();
+        }
+
+        ResetSharedState(state);
+        return false;
     }
 
     bool PluginVideoRecordControllerIpc::ReadPreview(PreviewFrameSnapshot& preview)
@@ -46,15 +104,20 @@ namespace PluginVideoRecord
         nextPreview.isValid = false;
         nextPreview.width = 0;
         nextPreview.height = 0;
+        nextPreview.sampleTimeHns = 0;
         nextPreview.pixels.clear();
 
-        for (int attempt = 0; attempt < 3; ++attempt)
+        for (int attempt = 0; attempt < 64; ++attempt)
         {
             const LONG beginSequence = previewView_->frameSequence;
             if ((beginSequence & 1) != 0)
             {
+                Sleep(0);
+                SwitchToThread();
                 continue;
             }
+
+            MemoryBarrier();
 
             if (previewView_->protocolVersion != ProtocolVersion)
             {
@@ -66,6 +129,7 @@ namespace PluginVideoRecord
             const LONG width = previewView_->width;
             const LONG height = previewView_->height;
             const LONG stride = previewView_->stride;
+            const LONGLONG sampleTimeHns = previewView_->sampleTimeHns;
             const bool hasPixels = isValid != FALSE && width > 0 && height > 0 && stride >= 4;
             const size_t pixelBytes = hasPixels ? static_cast<size_t>(height) * stride : 0;
             if (pixelBytes > PreviewBufferBytes)
@@ -80,12 +144,14 @@ namespace PluginVideoRecord
                 CopyMemory(nextPreview.pixels.data(), previewView_->pixels, pixelBytes);
             }
 
+            MemoryBarrier();
             const LONG endSequence = previewView_->frameSequence;
             if (beginSequence == endSequence && (endSequence & 1) == 0)
             {
                 nextPreview.isValid = hasPixels;
                 nextPreview.width = hasPixels ? static_cast<UINT>(width) : 0;
                 nextPreview.height = hasPixels ? static_cast<UINT>(height) : 0;
+                nextPreview.sampleTimeHns = hasPixels ? sampleTimeHns : 0;
                 if (!hasPixels)
                 {
                     nextPreview.pixels.clear();
@@ -94,6 +160,9 @@ namespace PluginVideoRecord
                 preview = std::move(nextPreview);
                 return true;
             }
+
+            Sleep(0);
+            SwitchToThread();
         }
 
         return false;
@@ -135,6 +204,27 @@ namespace PluginVideoRecord
         return true;
     }
 
+    bool PluginVideoRecordControllerIpc::SetSelectedBackend(GraphicsBackend graphicsBackend)
+    {
+        if (!EnsureStateConnected())
+        {
+            return false;
+        }
+
+        ScopedMutexLock stateWriteLock(stateMutexHandle_);
+        if (!stateWriteLock.IsLocked())
+        {
+            return false;
+        }
+
+        InterlockedIncrement(&stateView_->stateSequence);
+        MemoryBarrier();
+        InterlockedExchange(&stateView_->selectedBackend, static_cast<LONG>(graphicsBackend));
+        MemoryBarrier();
+        InterlockedIncrement(&stateView_->stateSequence);
+        return true;
+    }
+
     bool PluginVideoRecordControllerIpc::SendCommand(CommandType commandType)
     {
         if (!EnsureStateConnected())
@@ -148,149 +238,4 @@ namespace PluginVideoRecord
         return SetEvent(commandEvent_) == TRUE;
     }
 
-    bool PluginVideoRecordControllerIpc::EnsureStateConnected()
-    {
-        if (stateMappingHandle_ && commandEvent_ && stateView_)
-        {
-            return true;
-        }
-
-        CloseStateHandles();
-
-        stateMappingHandle_ = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, MappingName);
-        if (!stateMappingHandle_)
-        {
-            return false;
-        }
-
-        stateView_ = static_cast<SharedState*>(
-            MapViewOfFile(stateMappingHandle_, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SharedState)));
-        if (!stateView_)
-        {
-            CloseStateHandles();
-            return false;
-        }
-
-        commandEvent_ = OpenEventW(EVENT_MODIFY_STATE, FALSE, CommandEventName);
-        if (!commandEvent_)
-        {
-            CloseStateHandles();
-            return false;
-        }
-
-        return true;
-    }
-
-    bool PluginVideoRecordControllerIpc::EnsurePreviewConnected()
-    {
-        if (previewMappingHandle_ && previewView_)
-        {
-            return true;
-        }
-
-        ClosePreviewHandles();
-
-        previewMappingHandle_ = OpenFileMappingW(FILE_MAP_READ, FALSE, PreviewMappingName);
-        if (!previewMappingHandle_)
-        {
-            return false;
-        }
-
-        previewView_ = static_cast<PreviewFrame*>(
-            MapViewOfFile(previewMappingHandle_, FILE_MAP_READ, 0, 0, sizeof(PreviewFrame)));
-        if (!previewView_)
-        {
-            ClosePreviewHandles();
-            return false;
-        }
-
-        return true;
-    }
-
-    bool PluginVideoRecordControllerIpc::EnsureLogConnected()
-    {
-        if (logMappingHandle_ && logView_)
-        {
-            return true;
-        }
-
-        CloseLogHandles();
-
-        logMappingHandle_ = OpenFileMappingW(FILE_MAP_READ, FALSE, LogMappingName);
-        if (!logMappingHandle_)
-        {
-            return false;
-        }
-
-        logView_ = static_cast<LogBuffer*>(
-            MapViewOfFile(logMappingHandle_, FILE_MAP_READ, 0, 0, sizeof(LogBuffer)));
-        if (!logView_)
-        {
-            CloseLogHandles();
-            return false;
-        }
-
-        if (logView_->protocolVersion != ProtocolVersion)
-        {
-            CloseLogHandles();
-            return false;
-        }
-
-        lastLogSequence_ = 0;
-
-        return true;
-    }
-
-    void PluginVideoRecordControllerIpc::CloseStateHandles()
-    {
-        if (stateView_)
-        {
-            UnmapViewOfFile(stateView_);
-            stateView_ = nullptr;
-        }
-
-        if (commandEvent_)
-        {
-            CloseHandle(commandEvent_);
-            commandEvent_ = nullptr;
-        }
-
-        if (stateMappingHandle_)
-        {
-            CloseHandle(stateMappingHandle_);
-            stateMappingHandle_ = nullptr;
-        }
-    }
-
-    void PluginVideoRecordControllerIpc::ClosePreviewHandles()
-    {
-        if (previewView_)
-        {
-            UnmapViewOfFile(previewView_);
-            previewView_ = nullptr;
-        }
-
-        if (previewMappingHandle_)
-        {
-            CloseHandle(previewMappingHandle_);
-            previewMappingHandle_ = nullptr;
-        }
-    }
-
-    void PluginVideoRecordControllerIpc::CloseLogHandles()
-    {
-        if (logView_)
-        {
-            UnmapViewOfFile(logView_);
-            logView_ = nullptr;
-        }
-
-        if (logMappingHandle_)
-        {
-            CloseHandle(logMappingHandle_);
-            logMappingHandle_ = nullptr;
-        }
-
-        lastLogSequence_ = 0;
-    }
 }

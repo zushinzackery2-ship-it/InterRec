@@ -28,6 +28,7 @@ namespace PluginVideoRecord
         HANDLE stopEvent_;
         DWORD processId_;
         LONGLONG recordingStartQpcHns_;
+        LONGLONG nextAudioSampleTimeHns_;
         PluginVideoRecordMfWriter* writer_;
         bool running_;
         bool stopRequested_;

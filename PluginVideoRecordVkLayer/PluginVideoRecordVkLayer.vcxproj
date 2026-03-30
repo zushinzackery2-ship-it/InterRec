@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{3A6C4BF4-E45E-4A1B-816A-4D6440EADD2A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>PluginVideoRecordVkLayer</RootNamespace>
+    <ProjectName>PluginVideoRecordVkLayer</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(SolutionDir)DependencyRoots.props" Condition="exists('$(SolutionDir)DependencyRoots.props')" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>PluginVideoRecordVkLayer</TargetName>
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>$(SolutionDir)PluginVideoRecordHook;$(SolutionDir)Shared;$(UrhIncludeRoot);$(UrhSourceRoot);$(VkhIncludeRoot);$(VkhSourceRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;WIN64;NOMINMAX;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>user32.lib;gdi32.lib;dwmapi.lib;d3d11.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;mfplat.lib;mfreadwrite.lib;mfuuid.lib;mmdevapi.lib;ole32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\PluginVideoRecordHook\pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordHookMain.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordHost.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordHostBackend.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordHostFrame.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordHostHooks.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordHostState.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordIpcServer.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordIpcServerState.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordIpcServerSession.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordPreviewPublisher.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVideoRecorder.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVideoRecorderFrame.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx11Capture.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx12Capture.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx12CaptureResources.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCaptureResources.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCaptureFrame.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordAudioLoopbackInterop.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordProcessAudioCapture.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfSinkWriterFactory.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfAudioInterop.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfQueue.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfWriter.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfInterop.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_autohook.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_autohook_helpers.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_autohook_dispatch.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_probe.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_bootstrap.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_debug.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_resources.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_context.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_hooks_common.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_hooks_present.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_probe.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_bootstrap.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_debug.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_resources.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_context.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_common.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_present.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_aux.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_bootstrap.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_dispatch.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_imports.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_hooks.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_layer_state.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_layer_instance.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_layer_runtime.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_layer_exports.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_loader.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_runtime_probe.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_tracking.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_proc.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\PluginVideoRecordHook\pch.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordHost.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordIpcServer.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordPreviewPublisher.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordVideoRecorder.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordDx11Capture.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordDx12Capture.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCapture.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordAudioLoopbackInterop.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordProcessAudioCapture.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfInternal.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfQueue.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfQueueInternal.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfWriter.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfInterop.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordInternalLogger.h" />
+    <ClInclude Include="..\Shared\PluginVideoRecordScopedMutexLock.h" />
+    <ClInclude Include="..\Shared\PluginVideoRecordProtocol.h" />
+    <ClInclude Include="..\Shared\PluginVideoRecordHookMode.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "PluginVideoRecordPreviewPublisher.h"
 #include "PluginVideoRecordVideoRecorder.h"
@@ -6,7 +6,7 @@
 namespace PluginVideoRecord
 {
     bool PluginVideoRecordVideoRecorder::Start(
-        const RainGuiDx11HookRuntime* runtime,
+        const UrhDx11HookRuntime* runtime,
         std::wstring& outputPath,
         std::wstring& error)
     {
@@ -49,7 +49,7 @@ namespace PluginVideoRecord
     }
 
     bool PluginVideoRecordVideoRecorder::Start(
-        const RainGuiDx12HookRuntime* runtime,
+        const UrhDx12HookRuntime* runtime,
         std::wstring& outputPath,
         std::wstring& error)
     {
@@ -91,7 +91,50 @@ namespace PluginVideoRecord
         return true;
     }
 
-    bool PluginVideoRecordVideoRecorder::OnFrame(const RainGuiDx11HookRuntime* runtime, std::wstring& error)
+    bool PluginVideoRecordVideoRecorder::Start(
+        const VkhHookRuntime* runtime,
+        std::wstring& outputPath,
+        std::wstring& error)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        StopUnlocked();
+
+        if (!runtime || !runtime->swapchain || !runtime->device || !runtime->queue)
+        {
+            error = L"Vulkan 运行时还没准备好，暂时不能开始录制。";
+            return false;
+        }
+
+        if (!vulkanCapture_.Initialize(runtime, error))
+        {
+            return false;
+        }
+
+        if (!BuildOutputPath(outputPath, error))
+        {
+            vulkanCapture_.Shutdown();
+            return false;
+        }
+
+        if (!StartWriterAndAudio(vulkanCapture_.GetCaptureWidth(), vulkanCapture_.GetCaptureHeight(), outputPath, error))
+        {
+            vulkanCapture_.Shutdown();
+            return false;
+        }
+
+        currentOutputPath_ = outputPath;
+        recording_ = true;
+        activeBackend_ = GraphicsBackend::Vulkan;
+
+        if (previewPublisher_)
+        {
+            previewPublisher_->Clear();
+        }
+
+        return true;
+    }
+
+    bool PluginVideoRecordVideoRecorder::OnFrame(const UrhDx11HookRuntime* runtime, std::wstring& error)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!recording_)
@@ -107,12 +150,6 @@ namespace PluginVideoRecord
 
         if (audioCapture_.TryGetLastError(error))
         {
-            return false;
-        }
-
-        if (!dx11Capture_.MatchesRuntime(runtime))
-        {
-            error = L"检测到 DX11 分辨率或缓冲格式变化，当前录制已停止。";
             return false;
         }
 
@@ -135,7 +172,7 @@ namespace PluginVideoRecord
         return true;
     }
 
-    bool PluginVideoRecordVideoRecorder::OnFrame(const RainGuiDx12HookRuntime* runtime, std::wstring& error)
+    bool PluginVideoRecordVideoRecorder::OnFrame(const UrhDx12HookRuntime* runtime, std::wstring& error)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!recording_)
@@ -154,16 +191,53 @@ namespace PluginVideoRecord
             return false;
         }
 
-        if (!dx12Capture_.MatchesRuntime(runtime))
-        {
-            error = L"检测到 DX12 分辨率、格式或命令队列变化，当前录制已停止。";
-            return false;
-        }
-
         CapturedFrame frame = {};
         if (!dx12Capture_.CaptureFrame(runtime, GetSampleTimeHns(), frame, error))
         {
             return false;
+        }
+
+        if (previewPublisher_)
+        {
+            previewPublisher_->PublishFrame(frame);
+        }
+
+        if (!writer_.EnqueueFrame(std::move(frame)) && writer_.TryGetLastError(error))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    bool PluginVideoRecordVideoRecorder::OnFrame(const VkhHookRuntime* runtime, std::wstring& error)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!recording_)
+        {
+            return true;
+        }
+
+        if (activeBackend_ != GraphicsBackend::Vulkan)
+        {
+            error = L"当前录制后端与 Vulkan Hook 不匹配。";
+            return false;
+        }
+
+        if (audioCapture_.TryGetLastError(error))
+        {
+            return false;
+        }
+
+        CapturedFrame frame = {};
+        if (!vulkanCapture_.CaptureFrame(runtime, GetSampleTimeHns(), frame, error))
+        {
+            return false;
+        }
+
+        if (frame.pixels.empty())
+        {
+            return true;
         }
 
         if (previewPublisher_)

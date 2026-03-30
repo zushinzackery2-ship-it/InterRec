@@ -1,18 +1,21 @@
 #include "pch.h"
 
 #include "PluginVideoRecordMainWindow.h"
+#include "PluginVideoRecordMainWindowInternal.h"
 
 namespace
 {
-    constexpr int TabMargin = 12;
-    constexpr int ContentInset = 14;
-    constexpr int ButtonWidth = 96;
-    constexpr int ButtonHeight = 30;
-    constexpr int TitleHeight = 30;
-    constexpr int LabelHeight = 20;
-    constexpr int RowGap = 10;
-    constexpr int ValueHeight = 26;
-    constexpr int GroupGap = 8;
+    constexpr int TabMargin = PluginVideoRecord::MainWindowInternal::ScaleUi(10);
+    constexpr int ContentInset = PluginVideoRecord::MainWindowInternal::ScaleUi(10);
+    constexpr int ButtonWidth = PluginVideoRecord::MainWindowInternal::ScaleUi(76);
+    constexpr int ButtonHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(24);
+    constexpr int TitleHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(24);
+    constexpr int LabelHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(16);
+    constexpr int DescriptionHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(14);
+    constexpr int HintHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(14);
+    constexpr int RowGap = PluginVideoRecord::MainWindowInternal::ScaleUi(6);
+    constexpr int ValueHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(20);
+    constexpr int MessageHeight = PluginVideoRecord::MainWindowInternal::ScaleUi(42);
 
     int ClampInt(int value, int minimum, int maximum)
     {
@@ -32,116 +35,6 @@ namespace
 
 namespace PluginVideoRecord
 {
-    bool PluginVideoRecordMainWindow::CreateFonts()
-    {
-        regularFont_ = CreateFontW(-13, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-        titleFont_ = CreateFontW(-20, 0, 0, 0, FW_SEMIBOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Microsoft YaHei UI");
-        monoFont_ = CreateFontW(-12, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, FIXED_PITCH, L"Consolas");
-        return regularFont_ && titleFont_ && monoFont_;
-    }
-
-    void PluginVideoRecordMainWindow::CreateControls()
-    {
-        tabControl_ = CreateWindowExW(
-            0,
-            WC_TABCONTROLW,
-            L"",
-            WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
-            0,
-            0,
-            100,
-            100,
-            hwnd_,
-            nullptr,
-            nullptr,
-            nullptr);
-
-        TCITEMW item = {};
-        item.mask = TCIF_TEXT;
-        item.pszText = const_cast<wchar_t*>(L"录制");
-        TabCtrl_InsertItem(tabControl_, static_cast<int>(ControllerPage::Record), &item);
-        item.pszText = const_cast<wchar_t*>(L"预览");
-        TabCtrl_InsertItem(tabControl_, static_cast<int>(ControllerPage::Preview), &item);
-        item.pszText = const_cast<wchar_t*>(L"日志");
-        TabCtrl_InsertItem(tabControl_, static_cast<int>(ControllerPage::Log), &item);
-
-        titleLabel_ = CreateWindowExW(0, L"STATIC", L"InterRec", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        communicationCaption_ = CreateWindowExW(0, L"STATIC", L"通信", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        communicationValue_ = CreateWindowExW(0, L"STATIC", L"离线", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        backendCaption_ = CreateWindowExW(0, L"STATIC", L"后端", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        backendValue_ = CreateWindowExW(0, L"STATIC", L"未识别", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        recorderCaption_ = CreateWindowExW(0, L"STATIC", L"状态", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        recorderValue_ = CreateWindowExW(0, L"STATIC", L"待机中", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        outputCaption_ = CreateWindowExW(0, L"STATIC", L"输出路径", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        outputEdit_ = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | WS_HSCROLL | ES_AUTOHSCROLL | ES_READONLY | ES_NOHIDESEL,
-            0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        messageCaption_ = CreateWindowExW(0, L"STATIC", L"状态信息", WS_CHILD | WS_VISIBLE, 0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        messageEdit_ = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_NOHIDESEL,
-            0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-        startButton_ = CreateWindowExW(0, L"BUTTON", L"开始录制", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0,
-            hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(1001)), nullptr, nullptr);
-        stopButton_ = CreateWindowExW(0, L"BUTTON", L"结束录制", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 0, 0, 0, 0,
-            hwnd_, reinterpret_cast<HMENU>(static_cast<INT_PTR>(1002)), nullptr, nullptr);
-        previewPanel_ = CreateWindowExW(
-            WS_EX_CLIENTEDGE,
-            L"PluginVideoRecordPreviewPanel",
-            L"",
-            WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
-            0,
-            0,
-            0,
-            0,
-            hwnd_,
-            nullptr,
-            reinterpret_cast<HINSTANCE>(GetWindowLongPtrW(hwnd_, GWLP_HINSTANCE)),
-            this);
-        logEdit_ = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_NOHIDESEL | WS_VSCROLL,
-            0, 0, 0, 0, hwnd_, nullptr, nullptr, nullptr);
-
-        SetControlFont(tabControl_, regularFont_);
-        SetControlFont(titleLabel_, titleFont_);
-        SetControlFont(communicationCaption_, regularFont_);
-        SetControlFont(communicationValue_, regularFont_);
-        SetControlFont(backendCaption_, regularFont_);
-        SetControlFont(backendValue_, regularFont_);
-        SetControlFont(recorderCaption_, regularFont_);
-        SetControlFont(recorderValue_, regularFont_);
-        SetControlFont(outputCaption_, regularFont_);
-        SetControlFont(outputEdit_, regularFont_);
-        SetControlFont(messageCaption_, regularFont_);
-        SetControlFont(messageEdit_, regularFont_);
-        SetControlFont(startButton_, regularFont_);
-        SetControlFont(stopButton_, regularFont_);
-        SetControlFont(logEdit_, monoFont_);
-    }
-
-    void PluginVideoRecordMainWindow::DestroyFonts()
-    {
-        if (monoFont_)
-        {
-            DeleteObject(monoFont_);
-            monoFont_ = nullptr;
-        }
-
-        if (titleFont_)
-        {
-            DeleteObject(titleFont_);
-            titleFont_ = nullptr;
-        }
-
-        if (regularFont_)
-        {
-            DeleteObject(regularFont_);
-            regularFont_ = nullptr;
-        }
-    }
-
     void PluginVideoRecordMainWindow::LayoutControls()
     {
         RECT clientRect = {};
@@ -168,42 +61,70 @@ namespace PluginVideoRecord
         const int right = pageContentRect_.right - ContentInset;
         const int bottom = pageContentRect_.bottom - ContentInset;
         const int contentWidth = ClampInt(right - left, 0, 32767);
-        const int contentHeight = ClampInt(bottom - top, 0, 32767);
 
-        const int buttonGap = 10;
+        const int buttonGap = MainWindowInternal::ScaleUi(8);
         const int buttonGroupWidth = ButtonWidth * 2 + buttonGap;
-        const int titleWidth = ClampInt(contentWidth - buttonGroupWidth - 12, 120, 240);
-        MoveWindow(titleLabel_, left, top - 2, titleWidth, TitleHeight, TRUE);
+        const int titleWidth = ClampInt(contentWidth - buttonGroupWidth - MainWindowInternal::ScaleUi(8), 100, 260);
+        MoveWindow(titleLabel_, left, top - MainWindowInternal::ScaleUi(2), titleWidth, TitleHeight, TRUE);
         MoveWindow(startButton_, right - buttonGroupWidth, top, ButtonWidth, ButtonHeight, TRUE);
         MoveWindow(stopButton_, right - ButtonWidth, top, ButtonWidth, ButtonHeight, TRUE);
 
-        int rowTop = top + TitleHeight + 12;
-        const int groupWidth = ClampInt((contentWidth - GroupGap * 2) / 3, 90, 32767);
-        const int valueOffset = LabelHeight - 1;
+        int rowTop = top + TitleHeight + MainWindowInternal::ScaleUi(8);
+        const int columnGap = MainWindowInternal::ScaleUi(10);
+        const int columnWidth = ClampInt((contentWidth - columnGap) / 2, 120, 32767);
+        const int rightColumnLeft = left + columnWidth + columnGap;
+        const int metricBlockHeight = LabelHeight + 2 + ValueHeight;
+        const int valueTopOffset = LabelHeight + 2;
 
-        MoveWindow(communicationCaption_, left, rowTop, groupWidth, LabelHeight, TRUE);
-        MoveWindow(communicationValue_, left, rowTop + valueOffset, groupWidth, ValueHeight, TRUE);
+        MoveWindow(communicationCaption_, left, rowTop, columnWidth, LabelHeight, TRUE);
+        MoveWindow(communicationValue_, left, rowTop + valueTopOffset, columnWidth, ValueHeight, TRUE);
+        MoveWindow(backendCaption_, rightColumnLeft, rowTop, columnWidth, LabelHeight, TRUE);
+        MoveWindow(backendValue_, rightColumnLeft, rowTop + valueTopOffset, columnWidth, ValueHeight, TRUE);
 
-        const int backendLeft = left + groupWidth + GroupGap;
-        MoveWindow(backendCaption_, backendLeft, rowTop, groupWidth, LabelHeight, TRUE);
-        MoveWindow(backendValue_, backendLeft, rowTop + valueOffset, groupWidth, ValueHeight, TRUE);
+        rowTop += metricBlockHeight + RowGap;
+        MoveWindow(recorderCaption_, left, rowTop, columnWidth, LabelHeight, TRUE);
+        MoveWindow(recorderValue_, left, rowTop + valueTopOffset, columnWidth, ValueHeight, TRUE);
 
-        const int recorderLeft = backendLeft + groupWidth + GroupGap;
-        const int recorderWidth = ClampInt(right - recorderLeft, 90, 32767);
-        MoveWindow(recorderCaption_, recorderLeft, rowTop, recorderWidth, LabelHeight, TRUE);
-        MoveWindow(recorderValue_, recorderLeft, rowTop + valueOffset, recorderWidth, ValueHeight, TRUE);
+        const int vulkanCheckWidth = MainWindowInternal::ScaleUi(58);
+        const int vulkanTextWidth = ClampInt(columnWidth - vulkanCheckWidth - MainWindowInternal::ScaleUi(6), 80, 32767);
+        const int vulkanCheckTop = rowTop - 1;
+        const int vulkanDescriptionTop = rowTop + LabelHeight + 2;
+        const int vulkanHintTop = vulkanDescriptionTop + DescriptionHeight + MainWindowInternal::ScaleUi(2);
+        MoveWindow(vulkanCaption_, rightColumnLeft, rowTop, vulkanTextWidth, LabelHeight, TRUE);
+        MoveWindow(vulkanDescription_, rightColumnLeft, vulkanDescriptionTop, vulkanTextWidth, DescriptionHeight, TRUE);
+        MoveWindow(vulkanHint_, rightColumnLeft, vulkanHintTop, vulkanTextWidth, HintHeight, TRUE);
+        MoveWindow(
+            vulkanEnabledCheck_,
+            rightColumnLeft + columnWidth - vulkanCheckWidth,
+            vulkanCheckTop,
+            vulkanCheckWidth,
+            ValueHeight,
+            TRUE);
 
-        rowTop += valueOffset + ValueHeight + RowGap + 2;
+        const int vulkanGroupHeight = LabelHeight + 2 + DescriptionHeight + MainWindowInternal::ScaleUi(2) + HintHeight;
+
+        rowTop += (vulkanGroupHeight > metricBlockHeight ? vulkanGroupHeight : metricBlockHeight) + RowGap + MainWindowInternal::ScaleUi(2);
+        MoveWindow(recordBackendCaption_, left, rowTop, contentWidth, LabelHeight, TRUE);
+        rowTop += LabelHeight + 2;
+
+        const int radioHeight = ValueHeight;
+        const int radioGap = MainWindowInternal::ScaleUi(8);
+        const int radioWidth = ClampInt((contentWidth - radioGap * 2) / 3, 80, 32767);
+        MoveWindow(backendDx11Radio_, left, rowTop, radioWidth, radioHeight, TRUE);
+        MoveWindow(backendDx12Radio_, left + radioWidth + radioGap, rowTop, radioWidth, radioHeight, TRUE);
+        MoveWindow(backendVulkanRadio_, left + (radioWidth + radioGap) * 2, rowTop, radioWidth, radioHeight, TRUE);
+
+        rowTop += radioHeight + RowGap;
         MoveWindow(outputCaption_, left, rowTop, contentWidth, LabelHeight, TRUE);
         rowTop += LabelHeight + 4;
 
-        const int outputHeight = ValueHeight + 12;
+        const int outputHeight = ValueHeight;
         MoveWindow(outputEdit_, left, rowTop, contentWidth, outputHeight, TRUE);
 
-        rowTop += outputHeight + RowGap + 4;
+        rowTop += outputHeight + RowGap;
         MoveWindow(messageCaption_, left, rowTop, contentWidth, LabelHeight, TRUE);
         rowTop += LabelHeight + 4;
-        MoveWindow(messageEdit_, left, rowTop, contentWidth, ClampInt(bottom - rowTop, 60, 32767), TRUE);
+        MoveWindow(messageEdit_, left, rowTop, contentWidth, ClampInt(MessageHeight, ValueHeight * 2, 32767), TRUE);
 
         RECT logRect = pageContentRect_;
         InflateRect(&logRect, -ContentInset, -ContentInset);
@@ -234,8 +155,16 @@ namespace PluginVideoRecord
             communicationValue_,
             backendCaption_,
             backendValue_,
+            recordBackendCaption_,
+            backendDx11Radio_,
+            backendDx12Radio_,
+            backendVulkanRadio_,
             recorderCaption_,
             recorderValue_,
+            vulkanCaption_,
+            vulkanDescription_,
+            vulkanHint_,
+            vulkanEnabledCheck_,
             outputCaption_,
             outputEdit_,
             messageCaption_,

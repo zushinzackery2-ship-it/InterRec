@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "PluginVideoRecordDx11Capture.h"
 
@@ -23,7 +23,7 @@ namespace PluginVideoRecord
     {
     }
 
-    bool PluginVideoRecordDx11Capture::Initialize(const RainGuiDx11HookRuntime* runtime, std::wstring& error)
+    bool PluginVideoRecordDx11Capture::Initialize(const UrhDx11HookRuntime* runtime, std::wstring& error)
     {
         Shutdown();
 
@@ -100,15 +100,18 @@ namespace PluginVideoRecord
     }
 
     bool PluginVideoRecordDx11Capture::CaptureFrame(
-        const RainGuiDx11HookRuntime* runtime,
+        const UrhDx11HookRuntime* runtime,
         LONGLONG sampleTimeHns,
         CapturedFrame& frame,
         std::wstring& error)
     {
         if (!MatchesRuntime(runtime))
         {
-            error = L"交换链尺寸或格式已经变化。";
-            return false;
+            if (!RebindRuntime(runtime, error))
+            {
+                error.clear();
+                return true;
+            }
         }
 
         UINT bufferIndex = runtime->bufferCount > runtime->backBufferIndex ? runtime->backBufferIndex : 0;
@@ -139,7 +142,41 @@ namespace PluginVideoRecord
         return true;
     }
 
-    bool PluginVideoRecordDx11Capture::MatchesRuntime(const RainGuiDx11HookRuntime* runtime) const
+    bool PluginVideoRecordDx11Capture::RebindRuntime(const UrhDx11HookRuntime* runtime, std::wstring& error)
+    {
+        if (!runtime || !runtime->swapChain || !runtime->device || !runtime->deviceContext)
+        {
+            error = L"DX11 运行时对象不完整，当前帧已跳过。";
+            return false;
+        }
+
+        UINT bufferIndex = runtime->bufferCount > runtime->backBufferIndex ? runtime->backBufferIndex : 0;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
+        const HRESULT hr = runtime->swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&backBuffer));
+        if (FAILED(hr))
+        {
+            error = L"DX11 交换链缓冲暂时不可用，当前帧已跳过。";
+            return false;
+        }
+
+        D3D11_TEXTURE2D_DESC description = {};
+        backBuffer->GetDesc(&description);
+        const UINT nextCaptureWidth = description.Width & ~1u;
+        const UINT nextCaptureHeight = description.Height & ~1u;
+        if (!IsSupportedFormat(description.Format) ||
+            description.SampleDesc.Count != 1 ||
+            nextCaptureWidth != captureWidth_ ||
+            nextCaptureHeight != captureHeight_ ||
+            description.Format != format_)
+        {
+            error = L"检测到 DX11 录制尺寸或格式变化，当前帧已跳过。";
+            return false;
+        }
+
+        return Initialize(runtime, error);
+    }
+
+    bool PluginVideoRecordDx11Capture::MatchesRuntime(const UrhDx11HookRuntime* runtime) const
     {
         if (!runtime || !runtime->swapChain || !runtime->device || !runtime->deviceContext)
         {

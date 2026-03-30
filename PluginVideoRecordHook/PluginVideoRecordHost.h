@@ -1,11 +1,12 @@
-#pragma once
+﻿#pragma once
 
-#include "../../RainGui/RainGui/raingui_dx11hook_types.h"
-#include "../../RainGui/RainGui/raingui_dx12hook_types.h"
+#include <urh/urh.h>
+#include <urh/dx11_types.h>
+#include <urh/dx12_types.h>
+#include <vkh/types.h>
 
 #include "PluginVideoRecordIpcServer.h"
 #include "PluginVideoRecordPreviewPublisher.h"
-#include "PluginVideoRecordUnifiedHook.h"
 #include "PluginVideoRecordVideoRecorder.h"
 
 namespace PluginVideoRecord
@@ -19,25 +20,51 @@ namespace PluginVideoRecord
         void RequestStop();
 
     private:
-        static void OnDx11Frame(const RainGuiDx11HookRuntime* runtime, void* userData);
-        static void OnDx12Frame(const RainGuiDx12HookRuntime* runtime, void* userData);
+        static void OnAutoFrame(const UrhAutoHookRuntime* runtime, void* userData);
+        static void OnVulkanFrame(const VkhHookRuntime* runtime, void* userData);
 
-        bool InstallUnifiedHook();
-        void HandleFrame(const RainGuiDx11HookRuntime* runtime);
-        void HandleFrame(const RainGuiDx12HookRuntime* runtime);
-        void UpdateGraphicsBackend(GraphicsBackend graphicsBackend);
+        bool InstallAutoHook();
+        bool InstallVulkanHook();
+        bool InstallDxHooks();
+        bool InstallLayerModeHooks();
+        void ShutdownHooks();
+        bool IsVulkanRuntimeReady() const;
+        static bool IsVulkanRuntimeUsable(const VkhHookRuntime* runtime);
+        void HandleFrame(const UrhAutoHookRuntime* runtime);
+        void HandleFrame(const UrhDx11HookRuntime* runtime);
+        void HandleFrame(const UrhDx12HookRuntime* runtime);
+        void HandleFrame(const VkhHookRuntime* runtime);
+        void PollBackendDiagnostics();
+        void PollPendingRuntimeCommand();
+        void UpdateBackendAvailability(GraphicsBackend graphicsBackend, bool available);
+        void EnsureSelectedBackend();
+        GraphicsBackend GetSelectedBackend() const;
+        GraphicsBackend GetActiveRecordingBackend() const;
+        void SetActiveRecordingBackend(GraphicsBackend graphicsBackend);
         void LogMessage(const std::wstring& message);
-        void ProcessPendingCommand(const RainGuiDx11HookRuntime* runtime);
-        void ProcessPendingCommand(const RainGuiDx12HookRuntime* runtime);
+        void ProcessPendingCommand(const UrhDx11HookRuntime* runtime);
+        void ProcessPendingCommand(const UrhDx12HookRuntime* runtime);
+        void ProcessPendingCommand(const VkhHookRuntime* runtime);
+        void ProcessPendingUnknownCommand(const std::wstring& message);
         void PublishState(RecorderState recorderState, const std::wstring& outputPath, const std::wstring& message, LONG errorCode);
 
         HMODULE moduleHandle_;
         std::atomic<bool> stopRequested_;
-        GraphicsBackend currentBackend_;
-        bool waitingForDx12Queue_;
+        LONG availableBackendMask_;
+        GraphicsBackend selectedBackend_;
+        GraphicsBackend activeRecordingBackend_;
+        GraphicsBackend lastAutoHookBackend_;
+        bool autoHookInstalled_;
+        bool vulkanHookInstalled_;
+        bool vulkanLayerModule_;
+        bool waitingForVulkanRuntime_;
+        bool recordingFaulted_;
+        bool lastVulkanRecognizedState_;
+        bool lastVulkanReadyState_;
+        bool lastVulkanRuntimeState_;
+        std::mutex commandMutex_;
         PluginVideoRecordIpcServer ipcServer_;
         PluginVideoRecordPreviewPublisher previewPublisher_;
-        PluginVideoRecordUnifiedHook unifiedHook_;
         PluginVideoRecordVideoRecorder recorder_;
     };
 }

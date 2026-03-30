@@ -1,5 +1,7 @@
 #pragma once
 
+#include "PluginVideoRecordMfQueue.h"
+
 namespace PluginVideoRecord
 {
     struct CapturedFrame
@@ -33,13 +35,12 @@ namespace PluginVideoRecord
         void WorkerThread();
         void SetFailure(const std::wstring& error);
 
-        static constexpr size_t MaxQueuedFrames = 4;
-        static constexpr size_t MaxQueuedAudioPackets = 256;
-
         mutable std::mutex mutex_;
         std::condition_variable condition_;
         std::deque<CapturedFrame> frames_;
         std::deque<CapturedAudioPacket> audioPackets_;
+        MfQueueBudget videoQueueBudget_;
+        MfQueueBudget audioQueueBudget_;
         std::thread workerThread_;
         std::wstring outputPath_;
         UINT width_;

@@ -13,6 +13,7 @@ namespace PluginVideoRecord
         : mappingHandle_(nullptr)
         , previewView_(nullptr)
         , lastPublishTick_(0)
+        , sessionId_(0)
     {
     }
 
@@ -21,10 +22,16 @@ namespace PluginVideoRecord
         Stop();
     }
 
-    bool PluginVideoRecordPreviewPublisher::Start()
+    bool PluginVideoRecordPreviewPublisher::Start(ULONGLONG sessionId)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         CloseHandles();
+        sessionId_ = sessionId;
+
+        if (sessionId_ == 0)
+        {
+            return false;
+        }
 
         mappingHandle_ = CreateFileMappingW(
             INVALID_HANDLE_VALUE,
@@ -32,7 +39,7 @@ namespace PluginVideoRecord
             PAGE_READWRITE,
             0,
             sizeof(PreviewFrame),
-            PreviewMappingName);
+            BuildPreviewMappingName(sessionId_).c_str());
         if (!mappingHandle_)
         {
             return false;
@@ -60,6 +67,7 @@ namespace PluginVideoRecord
 
         CloseHandles();
         lastPublishTick_ = 0;
+        sessionId_ = 0;
     }
 
     void PluginVideoRecordPreviewPublisher::Clear()
@@ -90,6 +98,7 @@ namespace PluginVideoRecord
         }
 
         InterlockedIncrement(&previewView_->frameSequence);
+        MemoryBarrier();
         previewView_->protocolVersion = ProtocolVersion;
         previewView_->width = PreviewWidth;
         previewView_->height = PreviewHeight;
@@ -97,6 +106,7 @@ namespace PluginVideoRecord
         previewView_->sampleTimeHns = frame.sampleTimeHns;
         WriteScaledFrame(frame);
         InterlockedExchange(&previewView_->isValid, TRUE);
+        MemoryBarrier();
         InterlockedIncrement(&previewView_->frameSequence);
         lastPublishTick_ = now;
     }
@@ -124,6 +134,7 @@ namespace PluginVideoRecord
         }
 
         InterlockedIncrement(&previewView_->frameSequence);
+        MemoryBarrier();
         previewView_->protocolVersion = ProtocolVersion;
         InterlockedExchange(&previewView_->isValid, FALSE);
         previewView_->width = PreviewWidth;
@@ -131,6 +142,7 @@ namespace PluginVideoRecord
         previewView_->stride = PreviewStride;
         previewView_->sampleTimeHns = 0;
         ZeroMemory(previewView_->pixels, sizeof(previewView_->pixels));
+        MemoryBarrier();
         InterlockedIncrement(&previewView_->frameSequence);
     }
 

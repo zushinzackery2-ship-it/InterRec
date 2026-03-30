@@ -1,65 +1,42 @@
-<div align="center">
-
 # InterRec
 
-游戏进程内录制工具，基于 RainGui 图形 Hook，支持 DX11 / DX12
+游戏进程内录制工具，支持 `DX11 / DX12 / Vulkan`。
 
-<p>
-    <img alt="License" src="https://img.shields.io/badge/License-MIT-2ea44f" />
-    <img alt="Platform" src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6" />
-    <img alt="Toolchain" src="https://img.shields.io/badge/Toolchain-VS2022-5C2D91" />
-    <img alt="Build" src="https://img.shields.io/badge/Build-Release%20%7C%20MT-FFB000" />
-</p>
+## 定位
 
-<!-- 在这里放一张效果截图或 GIF -->
-<!-- ![InterRec Demo](docs/demo.gif) -->
+- `DX11 / DX12` 走 `Universal-Render-Hook`
+- `Vulkan` 走标准 `Layer` 链
+- 录制业务包含抓帧、音频、编码、IPC、控制器
+- 当前正式 Vulkan 路径只保留 `Layer` 模式
 
-</div>
+## 目录
 
-> [!NOTE]
-> 专注游戏进程内抓帧 + 进程独占音频录制，通过独立 IPC 控制器操作
-
-> [!IMPORTANT]
-> **自动识别 DX11 / DX12** — 基于 RainGui 统一图形 Hook，运行时自动选择后端
->
-> **独立控制器** — Win32 原生 IPC 控制，录制 / 预览 / 日志三页面
->
-> **进程音频隔离** — 只录目标进程的声音，不录系统全局
-
-## 功能
-
-- 运行时自动识别 DX11 / DX12 并安装对应 Hook
-- 独立 Win32 控制器通过 IPC 控制录制
-- 控制器实时显示通信状态、图形后端、录制状态、输出路径
-- 预览页显示实时缩略画面，日志页显示 Hook 端和控制器日志
-- 进程音频隔离录制
-- H.264 编码，目标 120 FPS / 12 Mbps
-- DX12 支持 RGBA / BGRA / 10-bit / FP16 后缓冲格式
-- 分辨率跟随游戏后缓冲，自动修正为偶数适配编码器
-- BepInEx 插件自动加载原生录制 DLL
-- 输出路径：`\PluginVideoRecord\yyyyMMdd_HHmmss.mp4`
-
-## 工程结构
-
-```
-PluginVideoRecordHook/           原生录制 DLL（Hook + 采集 + 编码 + IPC）
-PluginVideoRecordController/     独立 Win32 控制器
-PluginVideoRecordLoaderMono/     BepInEx 5 / Mono Loader
-PluginVideoRecordLoaderIl2Cpp/   BepInEx 6 / IL2CPP Loader（源码）
-PluginVideoRecordLoaderShared/   Loader 共用加载逻辑
-Shared/                          IPC 协议和共享常量
+```text
+PluginVideoRecordHook/           录制 DLL
+PluginVideoRecordController/     Win32 控制器
+PluginVideoRecordVkLayer/        Vulkan Layer 交付工程
+PluginVideoRecordLoaderMono/     Mono Loader
+PluginVideoRecordLoaderIl2Cpp/   IL2CPP Loader（源码）
+PluginVideoRecordLoaderShared/   Loader 共用逻辑
+Shared/                          协议与共享常量
 ```
 
 ## 依赖
 
-- **RainGui** — 源码级引用，默认要求与本仓库同级放置
+- `RainGui` 不再直接编进正式录制产物
+- Mono Loader 需要本地 BepInEx / Unity 引用路径
+- `Universal-Render-Hook` / `VulkanHook` 默认按当前同级目录查找
+- 如果目录结构不同，可以在构建时覆盖：
 
-```
-InterRec/
-../RainGui/
+```powershell
+.\build.bat /p:DependencyRoot=F:\YourWorkspace\
 ```
 
-- **BepInEx** — Mono 游戏需要 BepInEx 5，IL2CPP 游戏需要 BepInEx 6
+或分别覆盖：
+
+```powershell
+.\build.bat /p:UrhRoot=F:\Deps\Universal-Render-Hook\URH\ /p:VkhRoot=F:\Deps\VulkanHook\VulkanHook\
+```
 
 ## 构建
 
@@ -67,28 +44,28 @@ InterRec/
 .\build.bat
 ```
 
-产物：
+默认产物：
 
-```
+```text
 bin\x64\Release\PluginVideoRecordHook.dll
 bin\x64\Release\PluginVideoRecordController.exe
-bin\x64\Release\PluginVideoRecordLoaderMono.dll
+bin\x64\Release\PluginVideoRecordVkLayer.dll
 ```
 
 ## 使用
 
-1. 将 Loader DLL + `PluginVideoRecordHook.dll` 放到 `BepInEx\plugins` 子目录
-2. 启动游戏
+1. `DX11 / DX12`：把 Loader 和 `PluginVideoRecordHook.dll` 放进 `BepInEx\plugins`
+2. `Vulkan`：控制器里启用 `Vulkan-Layer模式`，然后重启目标进程
 3. 运行 `PluginVideoRecordController.exe`
-4. 在控制器 `录制` 页操作开始 / 结束
-5. 录制文件写入游戏目录 `PluginVideoRecord\` 文件夹
+4. 录制文件输出到游戏目录下 `PluginVideoRecord\yyyyMMdd_HHmmss.mp4`
+
+## 关键行为
+
+- 控制面是 `SessionRegistry + per-session IPC`
+- 录制错误会保持在 `Error`，直到手动停止
+- Vulkan Layer manifest 由控制器运行时生成
+- 缺少 `PluginVideoRecordVkLayer.dll` 时，Layer 模式开关自动禁用
 
 ## 许可
 
-本项目采用 MIT 许可证，详见根目录 `LICENSE`。
-
-<div align="center">
-
-**Platform:** Windows x64 | **License:** MIT
-
-</div>
+MIT，见根目录 `LICENSE`

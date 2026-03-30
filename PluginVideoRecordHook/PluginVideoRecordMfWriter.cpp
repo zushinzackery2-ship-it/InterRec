@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "PluginVideoRecordMfInterop.h"
+#include "PluginVideoRecordMfQueue.h"
 #include "PluginVideoRecordMfWriter.h"
 
 namespace
@@ -23,6 +24,8 @@ namespace PluginVideoRecord
         , failed_(false)
         , startupCompleted_(false)
     {
+        ResetVideoQueueBudget(videoQueueBudget_);
+        ResetAudioQueueBudget(audioQueueBudget_);
     }
 
     PluginVideoRecordMfWriter::~PluginVideoRecordMfWriter()
@@ -41,6 +44,8 @@ namespace PluginVideoRecord
             height_ = height;
             frames_.clear();
             audioPackets_.clear();
+            ResetVideoQueueBudget(videoQueueBudget_);
+            ResetAudioQueueBudget(audioQueueBudget_);
             started_ = true;
             stopping_ = false;
             failed_ = false;
@@ -90,14 +95,9 @@ namespace PluginVideoRecord
             return false;
         }
 
-        if (frames_.size() >= MaxQueuedFrames)
-        {
-            frames_.pop_front();
-        }
-
-        frames_.emplace_back(std::move(frame));
+        const bool enqueued = EnqueueCapturedFrame(frames_, videoQueueBudget_, std::move(frame));
         condition_.notify_all();
-        return true;
+        return enqueued;
     }
 
     bool PluginVideoRecordMfWriter::EnqueueAudioPacket(CapturedAudioPacket&& packet)
@@ -108,17 +108,9 @@ namespace PluginVideoRecord
             return false;
         }
 
-        if (audioPackets_.size() >= MaxQueuedAudioPackets)
-        {
-            failed_ = true;
-            lastError_ = L"音频写入队列积压过多，已停止录制。";
-            condition_.notify_all();
-            return false;
-        }
-
-        audioPackets_.emplace_back(std::move(packet));
+        const bool enqueued = EnqueueCapturedAudioPacket(audioPackets_, audioQueueBudget_, std::move(packet));
         condition_.notify_all();
-        return true;
+        return enqueued;
     }
 
     bool PluginVideoRecordMfWriter::TryGetLastError(std::wstring& error) const
@@ -198,11 +190,13 @@ namespace PluginVideoRecord
                 {
                     videoFrame = std::move(frames_.front());
                     frames_.pop_front();
+                    OnCapturedFrameDequeued(videoQueueBudget_, videoFrame);
                 }
                 else
                 {
                     audioPacket = std::move(audioPackets_.front());
                     audioPackets_.pop_front();
+                    OnCapturedAudioPacketDequeued(audioQueueBudget_, audioPacket);
                 }
             }
 
@@ -256,6 +250,8 @@ namespace PluginVideoRecord
         std::lock_guard<std::mutex> lock(mutex_);
         frames_.clear();
         audioPackets_.clear();
+        ResetVideoQueueBudget(videoQueueBudget_);
+        ResetAudioQueueBudget(audioQueueBudget_);
         started_ = false;
         stopping_ = false;
         startupCompleted_ = true;

@@ -10,7 +10,7 @@ namespace PluginVideoRecord
         PluginVideoRecordPreviewPublisher();
         ~PluginVideoRecordPreviewPublisher();
 
-        bool Start();
+        bool Start(ULONGLONG sessionId);
         void Stop();
         void Clear();
         void PublishFrame(const CapturedFrame& frame);
@@ -23,6 +23,7 @@ namespace PluginVideoRecord
         HANDLE mappingHandle_;
         PreviewFrame* previewView_;
         ULONGLONG lastPublishTick_;
+        ULONGLONG sessionId_;
         std::mutex mutex_;
     };
 }

@@ -23,6 +23,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(SolutionDir)DependencyRoots.props" Condition="exists('$(SolutionDir)DependencyRoots.props')" />
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -50,7 +51,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Shared;$(SolutionDir)..\RainGui\RainGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Shared;$(UrhIncludeRoot);$(UrhSourceRoot);$(VkhIncludeRoot);$(VkhSourceRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;WIN64;NOMINMAX;WIN32_LEAN_AND_MEAN;UNICODE;_UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
@@ -66,60 +67,73 @@
     </ClCompile>
     <ClCompile Include="PluginVideoRecordHookMain.cpp" />
     <ClCompile Include="PluginVideoRecordHost.cpp" />
+    <ClCompile Include="PluginVideoRecordHostBackend.cpp" />
+    <ClCompile Include="PluginVideoRecordHostFrame.cpp" />
+    <ClCompile Include="PluginVideoRecordHostHooks.cpp" />
+    <ClCompile Include="PluginVideoRecordHostState.cpp" />
     <ClCompile Include="PluginVideoRecordIpcServer.cpp" />
+    <ClCompile Include="PluginVideoRecordIpcServerState.cpp" />
+    <ClCompile Include="PluginVideoRecordIpcServerSession.cpp" />
     <ClCompile Include="PluginVideoRecordPreviewPublisher.cpp" />
-    <ClCompile Include="PluginVideoRecordUnifiedHook.cpp" />
-    <ClCompile Include="PluginVideoRecordUnifiedHookRuntime.cpp" />
     <ClCompile Include="PluginVideoRecordVideoRecorder.cpp" />
     <ClCompile Include="PluginVideoRecordVideoRecorderFrame.cpp" />
     <ClCompile Include="PluginVideoRecordDx11Capture.cpp" />
     <ClCompile Include="PluginVideoRecordDx12Capture.cpp" />
     <ClCompile Include="PluginVideoRecordDx12CaptureResources.cpp" />
+    <ClCompile Include="PluginVideoRecordVulkanCaptureResources.cpp" />
+    <ClCompile Include="PluginVideoRecordVulkanCaptureFrame.cpp" />
     <ClCompile Include="PluginVideoRecordAudioLoopbackInterop.cpp" />
     <ClCompile Include="PluginVideoRecordProcessAudioCapture.cpp" />
     <ClCompile Include="PluginVideoRecordMfSinkWriterFactory.cpp" />
     <ClCompile Include="PluginVideoRecordMfAudioInterop.cpp" />
+    <ClCompile Include="PluginVideoRecordMfQueue.cpp" />
     <ClCompile Include="PluginVideoRecordMfWriter.cpp" />
     <ClCompile Include="PluginVideoRecordMfInterop.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_draw.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_widgets.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_tables.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_defaults.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_win32.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_dx11.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\raingui_impl_dx12.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_probe.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_bootstrap.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_debug.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_resources.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_context.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_hooks_common.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX11Hook\raingui_dx11hook_hooks_present.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_probe.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_bootstrap.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_debug.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_resources.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_context.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_hooks_common.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_hooks_present.cpp" />
-    <ClCompile Include="..\..\RainGui\RainGui\DX12Hook\raingui_dx12hook_hooks_aux.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_autohook.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_autohook_helpers.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_autohook_dispatch.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_probe.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_bootstrap.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_debug.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_resources.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_context.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_hooks_common.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx11_hooks_present.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_probe.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_bootstrap.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_debug.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_resources.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_context.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_common.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_present.cpp" />
+    <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_aux.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_bootstrap.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_dispatch.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_imports.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_hooks.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_loader.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_runtime_probe.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_tracking.cpp" />
+    <ClCompile Include="$(VkhSourceRoot)vkh_proc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="PluginVideoRecordHost.h" />
     <ClInclude Include="PluginVideoRecordIpcServer.h" />
     <ClInclude Include="PluginVideoRecordPreviewPublisher.h" />
-    <ClInclude Include="PluginVideoRecordUnifiedHook.h" />
     <ClInclude Include="PluginVideoRecordVideoRecorder.h" />
     <ClInclude Include="PluginVideoRecordDx11Capture.h" />
     <ClInclude Include="PluginVideoRecordDx12Capture.h" />
+    <ClInclude Include="PluginVideoRecordVulkanCapture.h" />
     <ClInclude Include="PluginVideoRecordAudioLoopbackInterop.h" />
     <ClInclude Include="PluginVideoRecordProcessAudioCapture.h" />
     <ClInclude Include="PluginVideoRecordMfInternal.h" />
+    <ClInclude Include="PluginVideoRecordMfQueue.h" />
     <ClInclude Include="PluginVideoRecordMfWriter.h" />
     <ClInclude Include="PluginVideoRecordMfInterop.h" />
+    <ClInclude Include="PluginVideoRecordInternalLogger.h" />
     <ClInclude Include="..\Shared\PluginVideoRecordProtocol.h" />
+    <ClInclude Include="..\Shared\PluginVideoRecordScopedMutexLock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

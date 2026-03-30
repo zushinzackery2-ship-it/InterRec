@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "PluginVideoRecordDx12Capture.h"
 
@@ -135,7 +135,7 @@ namespace
 namespace PluginVideoRecord
 {
     bool PluginVideoRecordDx12Capture::CreateReadbackResources(
-        const RainGuiDx12HookRuntime* runtime,
+        const UrhDx12HookRuntime* runtime,
         std::wstring& error)
     {
         UINT bufferIndex = runtime->bufferCount > runtime->backBufferIndex ? runtime->backBufferIndex : 0;

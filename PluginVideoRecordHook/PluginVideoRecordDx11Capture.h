@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-#include "../../RainGui/RainGui/raingui_dx11hook_types.h"
+#include <urh/dx11_types.h>
 
 #include "PluginVideoRecordMfWriter.h"
 
@@ -11,18 +11,19 @@ namespace PluginVideoRecord
     public:
         PluginVideoRecordDx11Capture();
 
-        bool Initialize(const RainGuiDx11HookRuntime* runtime, std::wstring& error);
+        bool Initialize(const UrhDx11HookRuntime* runtime, std::wstring& error);
         void Shutdown();
         bool CaptureFrame(
-            const RainGuiDx11HookRuntime* runtime,
+            const UrhDx11HookRuntime* runtime,
             LONGLONG sampleTimeHns,
             CapturedFrame& frame,
             std::wstring& error);
-        bool MatchesRuntime(const RainGuiDx11HookRuntime* runtime) const;
+        bool MatchesRuntime(const UrhDx11HookRuntime* runtime) const;
         UINT GetCaptureWidth() const;
         UINT GetCaptureHeight() const;
 
     private:
+        bool RebindRuntime(const UrhDx11HookRuntime* runtime, std::wstring& error);
         void ConvertPixels(const D3D11_MAPPED_SUBRESOURCE& mappedResource, CapturedFrame& frame) const;
         bool IsSupportedFormat(DXGI_FORMAT format) const;
 

@@ -1,6 +1,6 @@
-#pragma once
+﻿#pragma once
 
-#include "../../RainGui/RainGui/raingui_dx12hook_types.h"
+#include <urh/dx12_types.h>
 
 #include "PluginVideoRecordMfWriter.h"
 
@@ -12,19 +12,20 @@ namespace PluginVideoRecord
         PluginVideoRecordDx12Capture();
         ~PluginVideoRecordDx12Capture();
 
-        bool Initialize(const RainGuiDx12HookRuntime* runtime, std::wstring& error);
+        bool Initialize(const UrhDx12HookRuntime* runtime, std::wstring& error);
         void Shutdown();
         bool CaptureFrame(
-            const RainGuiDx12HookRuntime* runtime,
+            const UrhDx12HookRuntime* runtime,
             LONGLONG sampleTimeHns,
             CapturedFrame& frame,
             std::wstring& error);
-        bool MatchesRuntime(const RainGuiDx12HookRuntime* runtime) const;
+        bool MatchesRuntime(const UrhDx12HookRuntime* runtime) const;
         UINT GetCaptureWidth() const;
         UINT GetCaptureHeight() const;
 
     private:
-        bool CreateReadbackResources(const RainGuiDx12HookRuntime* runtime, std::wstring& error);
+        bool RebindRuntime(const UrhDx12HookRuntime* runtime, std::wstring& error);
+        bool CreateReadbackResources(const UrhDx12HookRuntime* runtime, std::wstring& error);
         bool WaitForCopy(std::wstring& error);
         void ConvertPixels(const std::uint8_t* sourcePixels, CapturedFrame& frame) const;
         bool IsSupportedFormat(DXGI_FORMAT format) const;
