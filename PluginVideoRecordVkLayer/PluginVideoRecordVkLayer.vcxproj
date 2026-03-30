@@ -108,17 +108,12 @@
     <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_present.cpp" />
     <ClCompile Include="$(UrhSourceRoot)urh_dx12_hooks_aux.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_bootstrap.cpp" />
-    <ClCompile Include="$(VkhSourceRoot)vkh_dispatch.cpp" />
-    <ClCompile Include="$(VkhSourceRoot)vkh_imports.cpp" />
-    <ClCompile Include="$(VkhSourceRoot)vkh_hooks.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_layer_state.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_layer_instance.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_layer_runtime.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_layer_exports.cpp" />
-    <ClCompile Include="$(VkhSourceRoot)vkh_loader.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_runtime_probe.cpp" />
     <ClCompile Include="$(VkhSourceRoot)vkh_tracking.cpp" />
-    <ClCompile Include="$(VkhSourceRoot)vkh_proc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\PluginVideoRecordHook\pch.h" />
