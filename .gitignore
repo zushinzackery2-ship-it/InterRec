@@ -1,4 +1,3 @@
-# Visual Studio
 .vs/
 .vscode/
 .idea/
@@ -7,39 +6,35 @@
 *.userosscache
 *.sln.docstates
 
-# Build outputs
 bin/
 obj/
+**/bin/
+**/obj/
 Debug/
 Release/
 x64/
 x86/
-bin_verify/
-**/bin_verify/
 
-# C/C++
 *.ilk
 *.ipch
 *.iobj
 *.ipdb
 *.pch
 *.pdb
-*.exp
-*.lib
 *.idb
 *.tlog
 *.lastbuildstate
-
-# C#
+*.exp
+*.lib
 *.cache
-*.pyc
-__pycache__/
 
-# Logs
+__pycache__/
+*.pyc
+
 *.log
 *.tmp
 *.bak
 *.dmp
-
-# Recording outputs
 *.mp4
+
+packed/

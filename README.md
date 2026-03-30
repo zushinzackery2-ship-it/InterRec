@@ -1,13 +1,29 @@
+<div align="center">
+
 # InterRec
 
-游戏进程内录制工具，支持 `DX11 / DX12 / Vulkan`。
+**Windows 游戏进程内录制工具**
 
-## 定位
+*DX11 / DX12 / Vulkan-Layer | Sessionized IPC | Media Foundation*
 
-- `DX11 / DX12` 走 `Universal-Render-Hook`
-- `Vulkan` 走标准 `Layer` 链
-- 录制业务包含抓帧、音频、编码、IPC、控制器
-- 当前正式 Vulkan 路径只保留 `Layer` 模式
+![C++](https://img.shields.io/badge/C%2B%2B-17-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?style=flat-square)
+![Graphics](https://img.shields.io/badge/Graphics-DX11%20%7C%20DX12%20%7C%20Vulkan-green?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+
+</div>
+
+---
+
+> [!NOTE]
+> **图形路径说明**  
+> `DX11 / DX12` 走 `Universal-Render-Hook`，`Vulkan` 走标准 `Layer` 链。  
+> 当前正式 Vulkan 路径只保留 `Layer` 模式。
+
+> [!IMPORTANT]
+> **仓库定位**  
+> 本仓库只放录制业务本体：抓帧、音频、编码、IPC、控制器。  
+> 底层图形 Hook 能力已经拆到 `Universal-Render-Hook` 与 `VulkanHook`。
 
 ## 目录
 
@@ -23,10 +39,13 @@ Shared/                          协议与共享常量
 
 ## 依赖
 
-- `RainGui` 不再直接编进正式录制产物
-- Mono Loader 需要本地 BepInEx / Unity 引用路径
-- `Universal-Render-Hook` / `VulkanHook` 默认按当前同级目录查找
-- 如果目录结构不同，可以在构建时覆盖：
+| 依赖 | 说明 |
+|:-----|:-----|
+| `Universal-Render-Hook` | `DX11 / DX12` 后端探测与回调调度 |
+| `VulkanHook` | `Vulkan Layer` runtime 跟踪 |
+| `RainGui` | 不属于正式录制产物依赖 |
+
+如果目录结构不同，可以在构建时覆盖依赖根目录：
 
 ```powershell
 .\build.bat /p:DependencyRoot=F:\YourWorkspace\
@@ -52,16 +71,9 @@ bin\x64\Release\PluginVideoRecordController.exe
 bin\x64\Release\PluginVideoRecordVkLayer.dll
 ```
 
-## 使用
-
-1. `DX11 / DX12`：把 Loader 和 `PluginVideoRecordHook.dll` 放进 `BepInEx\plugins`
-2. `Vulkan`：控制器里启用 `Vulkan-Layer模式`，然后重启目标进程
-3. 运行 `PluginVideoRecordController.exe`
-4. 录制文件输出到游戏目录下 `PluginVideoRecord\yyyyMMdd_HHmmss.mp4`
-
 ## 关键行为
 
-- 控制面是 `SessionRegistry + per-session IPC`
+- 控制面使用 `SessionRegistry + per-session IPC`
 - 录制错误会保持在 `Error`，直到手动停止
 - Vulkan Layer manifest 由控制器运行时生成
 - 缺少 `PluginVideoRecordVkLayer.dll` 时，Layer 模式开关自动禁用
