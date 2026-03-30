@@ -277,7 +277,6 @@ InterRec/
 │
 ├── Shared/                             # 协议与共享常量
 │
-├── build.bat                           # 构建脚本
 └── PluginVideoRecord.sln               # VS 解决方案
 ```
 
@@ -303,7 +302,7 @@ InterRec (本仓库)
 ## 构建
 
 ```powershell
-.\build.bat
+msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64
 ```
 
 默认产物：
@@ -317,13 +316,13 @@ bin\x64\Release\PluginVideoRecordVkLayer.dll
 如果目录结构不同，可以在构建时覆盖依赖根目录：
 
 ```powershell
-.\build.bat /p:DependencyRoot=F:\YourWorkspace\
+msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64 /p:DependencyRoot=F:\YourWorkspace\
 ```
 
 或分别覆盖：
 
 ```powershell
-.\build.bat /p:UrhRoot=F:\Deps\Universal-Render-Hook\URH\ /p:VkhRoot=F:\Deps\VulkanHook\VulkanHook\
+msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64 /p:UrhRoot=F:\Deps\Universal-Render-Hook\URH\ /p:VkhRoot=F:\Deps\VulkanHook\VulkanHook\
 ```
 
 ---

@@ -38,3 +38,6 @@ __pycache__/
 *.mp4
 
 packed/
+*.bat
+probe_implicit_vulkan_layer.py
+run_vulkan_record_smoketest.py
