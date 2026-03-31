@@ -1,7 +1,5 @@
 ﻿#include "pch.h"
 
-#include <vkh/vkh.h>
-
 #include "PluginVideoRecordHost.h"
 
 namespace
@@ -99,9 +97,9 @@ namespace PluginVideoRecord
 
         if (vulkanHookInstalled_)
         {
-            const bool hasRecognizedBackend = VHK::HasRecognizedBackend();
-            const bool isReady = VHK::IsReady();
-            const bool hasRuntime = VHK::GetRuntime() != nullptr;
+            const bool hasRecognizedBackend = URH::HasVulkanRecognizedBackend();
+            const bool isReady = URH::IsVulkanReady();
+            const bool hasRuntime = URH::GetVulkanRuntime() != nullptr;
 
             if (hasRecognizedBackend != lastVulkanRecognizedState_ ||
                 isReady != lastVulkanReadyState_ ||

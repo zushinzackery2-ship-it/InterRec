@@ -58,7 +58,7 @@ namespace PluginVideoRecord
         }
     }
 
-    void PluginVideoRecordHost::HandleFrame(const VkhHookRuntime* runtime)
+    void PluginVideoRecordHost::HandleFrame(const UrhVulkanHookRuntime* runtime)
     {
         if (!IsVulkanRuntimeUsable(runtime))
         {
@@ -205,7 +205,7 @@ namespace PluginVideoRecord
         ipcServer_.AcknowledgeCommand(commandType, sequence);
     }
 
-    void PluginVideoRecordHost::ProcessPendingCommand(const VkhHookRuntime* runtime)
+    void PluginVideoRecordHost::ProcessPendingCommand(const UrhVulkanHookRuntime* runtime)
     {
         std::lock_guard<std::mutex> commandLock(commandMutex_);
 

@@ -269,12 +269,19 @@ msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64 /p:UrhRoo
 ## 依赖方向
 
 ```text
-VulkanHook
-    ↑
-Universal-Render-Hook
-    ↑
-InterRec
+VulkanHook      Universal-Render-Hook
+      ↑                 ↑
+      └────────┬────────┘
+               ↑
+            InterRec
 ```
+
+- `InterRec -> Universal-Render-Hook`
+  - DX11 / DX12 Hook、运行时快照、AutoHook 诊断
+- `InterRec -> VulkanHook`
+  - Vulkan Layer 交付、controller 侧 Layer 开关与 manifest 管理
+- `Universal-Render-Hook -> VulkanHook`
+  - 当 `AutoHook` 需要把 Vulkan 纳入候选时，通过 `VulkanHook` 获取 Vulkan runtime 与回调
 
 ---
 

@@ -19,11 +19,11 @@ namespace PluginVideoRecord
         void SetPreviewPublisher(PluginVideoRecordPreviewPublisher* previewPublisher);
         bool Start(const UrhDx11HookRuntime* runtime, std::wstring& outputPath, std::wstring& error);
         bool Start(const UrhDx12HookRuntime* runtime, std::wstring& outputPath, std::wstring& error);
-        bool Start(const VkhHookRuntime* runtime, std::wstring& outputPath, std::wstring& error);
+        bool Start(const UrhVulkanHookRuntime* runtime, std::wstring& outputPath, std::wstring& error);
         void Stop();
         bool OnFrame(const UrhDx11HookRuntime* runtime, std::wstring& error);
         bool OnFrame(const UrhDx12HookRuntime* runtime, std::wstring& error);
-        bool OnFrame(const VkhHookRuntime* runtime, std::wstring& error);
+        bool OnFrame(const UrhVulkanHookRuntime* runtime, std::wstring& error);
         bool IsRecording() const;
         std::wstring GetCurrentOutputPath() const;
         std::wstring GetPendingOutputPath() const;

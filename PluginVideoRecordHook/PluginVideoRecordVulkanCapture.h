@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <vkh/vkh.h>
+#include <urh/vulkan.h>
 
 #include "PluginVideoRecordMfWriter.h"
 
@@ -12,14 +12,14 @@ namespace PluginVideoRecord
         PluginVideoRecordVulkanCapture();
         ~PluginVideoRecordVulkanCapture();
 
-        bool Initialize(const VkhHookRuntime* runtime, std::wstring& error);
+        bool Initialize(const UrhVulkanHookRuntime* runtime, std::wstring& error);
         void Shutdown();
         bool CaptureFrame(
-            const VkhHookRuntime* runtime,
+            const UrhVulkanHookRuntime* runtime,
             LONGLONG sampleTimeHns,
             CapturedFrame& frame,
             std::wstring& error);
-        bool MatchesRuntime(const VkhHookRuntime* runtime) const;
+        bool MatchesRuntime(const UrhVulkanHookRuntime* runtime) const;
         UINT GetCaptureWidth() const;
         UINT GetCaptureHeight() const;
 
@@ -37,15 +37,15 @@ namespace PluginVideoRecord
 
         bool ResolveFunctions(std::wstring& error);
         bool ResolveQueueFamilyIndex(std::wstring& error);
-        void ResolveCaptureFormat(const VkhHookRuntime* runtime);
-        bool RebindRuntime(const VkhHookRuntime* runtime, std::wstring& error);
-        bool CreateReadbackResources(const VkhHookRuntime* runtime, std::wstring& error);
+        void ResolveCaptureFormat(const UrhVulkanHookRuntime* runtime);
+        bool RebindRuntime(const UrhVulkanHookRuntime* runtime, std::wstring& error);
+        bool CreateReadbackResources(const UrhVulkanHookRuntime* runtime, std::wstring& error);
         bool AllocateReadbackSlot(ReadbackSlot& slot, std::wstring& error);
         void ReleaseReadbackSlot(ReadbackSlot& slot);
         void ReleaseReadbackResources();
         bool CollectCompletedFrame(CapturedFrame& frame, bool& hasFrame, std::wstring& error);
         bool SubmitCapture(
-            const VkhHookRuntime* runtime,
+            const UrhVulkanHookRuntime* runtime,
             LONGLONG sampleTimeHns,
             std::wstring& error);
         bool WaitForSlotFence(const ReadbackSlot& slot, std::uint64_t timeout, VkResult& result) const;

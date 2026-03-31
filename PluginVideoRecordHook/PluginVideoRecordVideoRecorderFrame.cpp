@@ -92,7 +92,7 @@ namespace PluginVideoRecord
     }
 
     bool PluginVideoRecordVideoRecorder::Start(
-        const VkhHookRuntime* runtime,
+        const UrhVulkanHookRuntime* runtime,
         std::wstring& outputPath,
         std::wstring& error)
     {
@@ -210,7 +210,7 @@ namespace PluginVideoRecord
         return true;
     }
 
-    bool PluginVideoRecordVideoRecorder::OnFrame(const VkhHookRuntime* runtime, std::wstring& error)
+    bool PluginVideoRecordVideoRecorder::OnFrame(const UrhVulkanHookRuntime* runtime, std::wstring& error)
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!recording_)

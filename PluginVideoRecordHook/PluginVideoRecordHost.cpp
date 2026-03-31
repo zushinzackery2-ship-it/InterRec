@@ -107,7 +107,7 @@ namespace PluginVideoRecord
         }
     }
 
-    void PluginVideoRecordHost::OnVulkanFrame(const VkhHookRuntime* runtime, void* userData)
+    void PluginVideoRecordHost::OnVulkanFrame(const UrhVulkanHookRuntime* runtime, void* userData)
     {
         auto* self = static_cast<PluginVideoRecordHost*>(userData);
         if (self)

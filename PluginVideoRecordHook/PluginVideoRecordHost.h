@@ -3,7 +3,7 @@
 #include <urh/urh.h>
 #include <urh/dx11_types.h>
 #include <urh/dx12_types.h>
-#include <vkh/types.h>
+#include <urh/vulkan_types.h>
 
 #include "PluginVideoRecordIpcServer.h"
 #include "PluginVideoRecordPreviewPublisher.h"
@@ -21,7 +21,7 @@ namespace PluginVideoRecord
 
     private:
         static void OnAutoFrame(const UrhAutoHookRuntime* runtime, void* userData);
-        static void OnVulkanFrame(const VkhHookRuntime* runtime, void* userData);
+        static void OnVulkanFrame(const UrhVulkanHookRuntime* runtime, void* userData);
 
         bool InstallAutoHook();
         bool InstallVulkanHook();
@@ -29,11 +29,11 @@ namespace PluginVideoRecord
         bool InstallLayerModeHooks();
         void ShutdownHooks();
         bool IsVulkanRuntimeReady() const;
-        static bool IsVulkanRuntimeUsable(const VkhHookRuntime* runtime);
+        static bool IsVulkanRuntimeUsable(const UrhVulkanHookRuntime* runtime);
         void HandleFrame(const UrhAutoHookRuntime* runtime);
         void HandleFrame(const UrhDx11HookRuntime* runtime);
         void HandleFrame(const UrhDx12HookRuntime* runtime);
-        void HandleFrame(const VkhHookRuntime* runtime);
+        void HandleFrame(const UrhVulkanHookRuntime* runtime);
         void PollBackendDiagnostics();
         void PollPendingRuntimeCommand();
         void UpdateBackendAvailability(GraphicsBackend graphicsBackend, bool available);
@@ -44,7 +44,7 @@ namespace PluginVideoRecord
         void LogMessage(const std::wstring& message);
         void ProcessPendingCommand(const UrhDx11HookRuntime* runtime);
         void ProcessPendingCommand(const UrhDx12HookRuntime* runtime);
-        void ProcessPendingCommand(const VkhHookRuntime* runtime);
+        void ProcessPendingCommand(const UrhVulkanHookRuntime* runtime);
         void ProcessPendingUnknownCommand(const std::wstring& message);
         void PublishState(RecorderState recorderState, const std::wstring& outputPath, const std::wstring& message, LONG errorCode);
 

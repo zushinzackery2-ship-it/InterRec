@@ -172,7 +172,7 @@ namespace PluginVideoRecord
         Shutdown();
     }
 
-    bool PluginVideoRecordVulkanCapture::Initialize(const VkhHookRuntime* runtime, std::wstring& error)
+    bool PluginVideoRecordVulkanCapture::Initialize(const UrhVulkanHookRuntime* runtime, std::wstring& error)
     {
         PvrcInternalLogger::Log("[PVRC][VulkanCapture] Initialize begin");
         Shutdown();
@@ -237,7 +237,7 @@ namespace PluginVideoRecord
         return true;
     }
 
-    void PluginVideoRecordVulkanCapture::ResolveCaptureFormat(const VkhHookRuntime* runtime)
+    void PluginVideoRecordVulkanCapture::ResolveCaptureFormat(const UrhVulkanHookRuntime* runtime)
     {
         format_ = static_cast<VkFormat>(runtime ? runtime->swapchainFormat : 0);
         if (IsSupportedFormat(format_))
@@ -366,7 +366,7 @@ namespace PluginVideoRecord
     }
 
     bool PluginVideoRecordVulkanCapture::RebindRuntime(
-        const VkhHookRuntime* runtime,
+        const UrhVulkanHookRuntime* runtime,
         std::wstring& error)
     {
         if (!runtime || !runtime->device || !runtime->queue || !runtime->swapchain)
@@ -521,7 +521,7 @@ namespace PluginVideoRecord
     }
 
     bool PluginVideoRecordVulkanCapture::CreateReadbackResources(
-        const VkhHookRuntime*,
+        const UrhVulkanHookRuntime*,
         std::wstring& error)
     {
         PvrcInternalLogger::Log("[PVRC][VulkanCapture] CreateReadbackResources begin");

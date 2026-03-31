@@ -1,7 +1,5 @@
 ﻿#include "pch.h"
 
-#include <vkh/vkh.h>
-
 #include "PluginVideoRecordHost.h"
 
 namespace PluginVideoRecord
@@ -32,8 +30,8 @@ namespace PluginVideoRecord
 
     bool PluginVideoRecordHost::InstallVulkanHook()
     {
-        VHK::Desc desc = {};
-        VHK::FillDefaultDesc(&desc);
+        URH::VulkanDesc desc = {};
+        URH::FillVulkanDefaultDesc(&desc);
         desc.onRender = OnVulkanFrame;
         desc.userData = this;
         desc.autoCreateContext = false;
@@ -42,7 +40,7 @@ namespace PluginVideoRecord
         desc.enableDefaultDebugWindow = false;
         desc.warmupFrames = 0;
 
-        vulkanHookInstalled_ = VHK::Init(&desc);
+        vulkanHookInstalled_ = URH::InitVulkan(&desc);
         if (vulkanHookInstalled_)
         {
             LogMessage(L"Vulkan Layer Hook 安装成功。");
@@ -79,22 +77,22 @@ namespace PluginVideoRecord
 
         if (vulkanHookInstalled_)
         {
-            VHK::Shutdown();
+            URH::ShutdownVulkan();
             vulkanHookInstalled_ = false;
         }
     }
 
     bool PluginVideoRecordHost::IsVulkanRuntimeReady() const
     {
-        if (!vulkanHookInstalled_ || !VHK::IsReady())
+        if (!vulkanHookInstalled_ || !URH::IsVulkanReady())
         {
             return false;
         }
 
-        return IsVulkanRuntimeUsable(VHK::GetRuntime());
+        return IsVulkanRuntimeUsable(URH::GetVulkanRuntime());
     }
 
-    bool PluginVideoRecordHost::IsVulkanRuntimeUsable(const VkhHookRuntime* runtime)
+    bool PluginVideoRecordHost::IsVulkanRuntimeUsable(const UrhVulkanHookRuntime* runtime)
     {
         return runtime &&
             runtime->swapchain &&

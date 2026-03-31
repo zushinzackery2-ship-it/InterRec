@@ -1,7 +1,5 @@
 ﻿#include "pch.h"
 
-#include <vkh/vkh.h>
-
 #include "PluginVideoRecordHost.h"
 
 namespace PluginVideoRecord
@@ -85,7 +83,7 @@ namespace PluginVideoRecord
                 return;
             }
 
-            if (const VkhHookRuntime* runtime = VHK::GetRuntime())
+            if (const URH::VulkanRuntime* runtime = URH::GetVulkanRuntime())
             {
                 ProcessPendingCommand(runtime);
                 return;

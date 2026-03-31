@@ -21,7 +21,7 @@ namespace
 namespace PluginVideoRecord
 {
     bool PluginVideoRecordVulkanCapture::CaptureFrame(
-        const VkhHookRuntime* runtime,
+        const UrhVulkanHookRuntime* runtime,
         LONGLONG sampleTimeHns,
         CapturedFrame& frame,
         std::wstring& error)
@@ -143,7 +143,7 @@ namespace PluginVideoRecord
     }
 
     bool PluginVideoRecordVulkanCapture::SubmitCapture(
-        const VkhHookRuntime* runtime,
+        const UrhVulkanHookRuntime* runtime,
         LONGLONG sampleTimeHns,
         std::wstring& error)
     {
@@ -296,7 +296,7 @@ namespace PluginVideoRecord
         return result == VK_SUCCESS || result == VK_TIMEOUT || result == VK_NOT_READY;
     }
 
-    bool PluginVideoRecordVulkanCapture::MatchesRuntime(const VkhHookRuntime* runtime) const
+    bool PluginVideoRecordVulkanCapture::MatchesRuntime(const UrhVulkanHookRuntime* runtime) const
     {
         if (!runtime || !runtime->device || !runtime->queue || !runtime->swapchain)
         {
