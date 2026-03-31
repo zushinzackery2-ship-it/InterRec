@@ -17,7 +17,7 @@
 
 > [!NOTE]
 > **图形路径**  
-> 代码层统一通过 `Universal-Render-Hook` 接入 DX11 / DX12 / Vulkan，不直接引用 VulkanHook。
+> 代码层统一通过 `Universal-Render-Hook` 接入 DX11 / DX12 / Vulkan。
 
 > [!IMPORTANT]
 > **控制模型**  
