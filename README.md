@@ -4,7 +4,7 @@
 
 **Windows 游戏进程内录制器**
 
-*DX11 / DX12 / Vulkan Layer | GPU 帧捕获 | Media Foundation 编码 | 共享内存控制器*
+*DX11 / DX12 / Vulkan Layer | GPU 帧捕获 | Media Foundation 编码 | 共享内存 IPC*
 
 ![C++](https://img.shields.io/badge/C%2B%2B-17-blue?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20x64-lightgrey?style=flat-square)
@@ -16,198 +16,157 @@
 ---
 
 > [!NOTE]
-> **当前图形路径**  
-> `DX11 / DX12` 通过 `Universal-Render-Hook` 接入。  
-> `Vulkan` 只保留 `Layer` 路径，通过 `VulkanHook` 接入；当前仓库里已经没有正式的非 Layer Vulkan 录制路径。  
-> `PluginVideoRecordHook` 代码层现在通过 `URH` 的 Vulkan facade 使用这条路径，不再直接调用 `VKH::...`。
+> **图形路径**  
+> DX11 / DX12 通过 `Universal-Render-Hook` 接入，Vulkan 仅保留 Layer 路径通过 `VulkanHook` 接入。Hook 代码层通过 URH Vulkan 门面访问，不直接调用 VKH。
 
 > [!IMPORTANT]
-> **当前控制模型**  
-> 宿主负责发布“当前可用后端”，控制器负责在可用后端中选择一个录制后端。  
-> 录制开始后所选后端会被锁定，直到手动停止或目标进程结束。
+> **控制模型**  
+> 宿主发布可用后端，控制器在可用后端中单选录制后端，录制期间锁定直到停止或进程结束。
 
 ## 特性
 
 | 功能 | 说明 |
 |:-----|:-----|
-| **DX11 帧捕获** | 在 `Present` 路径获取 `IDXGISwapChain`，复制 BackBuffer 到 staging texture，再 `Map` 读回 |
-| **DX12 帧捕获** | 复制 BackBuffer 到 readback buffer，并通过 fence 等待这次 copy 完成 |
-| **Vulkan 帧捕获** | 把 copy 命令提交到独立 readback slot，之后通过每个 slot 的 fence 轮询收集已完成帧 |
-| **Media Foundation 编码** | 使用 `IMFSinkWriter` 写入 H.264 MP4 |
-| **进程音频捕获** | 基于 WASAPI / loopback 的音频捕获与混流 |
-| **QPC 时间戳** | 使用 `QueryPerformanceCounter` 驱动音视频时间轴 |
-| **共享内存控制器** | Controller 与 Hook 通过共享内存映射和事件交换状态、日志、预览与命令 |
-| **后端单选** | 控制器只在“当前可用后端”中允许单选一个录制后端，录制期间锁定 |
-| **预览发布** | 可选把当前视频帧发布给控制器预览页 |
+| **DX11 帧捕获** | Present 路径复制 BackBuffer 到 staging texture，Map 读回 |
+| **DX12 帧捕获** | 复制 BackBuffer 到 readback buffer，fence 等待完成 |
+| **Vulkan 帧捕获** | 独立 readback slot + fence 轮询收集已完成帧 |
+| **MF 编码** | `IMFSinkWriter` 写入 H.264 MP4 |
+| **进程音频捕获** | WASAPI loopback 捕获与混流 |
+| **QPC 时间戳** | `QueryPerformanceCounter` 驱动音视频时间轴 |
+| **共享内存 IPC** | Controller 与 Hook 通过共享内存交换状态、日志、预览、命令 |
+| **后端单选** | 可用后端中单选录制后端，录制期间锁定 |
+| **预览发布** | 可选发布当前帧给控制器预览 |
 
 ---
 
 ## 架构
 
-```text
+```
 PluginVideoRecordController.exe
   SessionRegistry
-    ├─ SharedState    (在线状态 / 录制状态 / 可用后端 / 所选后端)
-    ├─ PreviewFrame   (预览图像共享内存)
+    ├─ SharedState    (状态 / 可用后端 / 所选后端)
+    ├─ PreviewFrame   (预览图像)
     ├─ LogBuffer      (日志环形缓冲)
-    └─ CommandEvent   (开始 / 停止命令)
+    └─ CommandEvent   (开始 / 停止)
           │
           │ shared memory + event
           ▼
 PluginVideoRecordHook.dll
-  ├─ PluginVideoRecordHost
-  │   ├─ URH AutoHook           (DX11 / DX12)
-  │   └─ URH Vulkan Facade      (backed by VulkanHook)
-  ├─ PluginVideoRecordVideoRecorder
+  ├─ Host
+  │   ├─ URH AutoHook      (DX11 / DX12)
+  │   └─ URH Vulkan 门面   (backed by VulkanHook)
+  ├─ VideoRecorder
   │   ├─ Dx11Capture
   │   ├─ Dx12Capture
   │   └─ VulkanCapture
-  ├─ PluginVideoRecordProcessAudioCapture
-  ├─ PluginVideoRecordMfWriter
-  └─ PluginVideoRecordPreviewPublisher
+  ├─ ProcessAudioCapture
+  ├─ MfWriter
+  └─ PreviewPublisher
 ```
 
 ---
 
 ## 后端选择流程
 
-```text
+```
 宿主轮询 Hook / Layer 状态
-    │
     ├─ 刷新 availableBackendMask
     │   ├─ DX11 是否命中
     │   ├─ DX12 是否命中
-    │   └─ Vulkan Layer 是否识别并可用
-    │
+    │   └─ Vulkan Layer 是否可用
     └─ 控制器读取状态
-        │
-        ├─ 如果用户尚未明确选择
-        │   └─ 默认优先级：Vulkan > DX12 > DX11
-        │
-        ├─ 如果用户已选择
-        │   └─ 只允许在当前可用后端里选择
-        │
+        ├─ 未选择时默认优先级：Vulkan > DX12 > DX11
+        ├─ 已选择时只允许在可用后端中选择
         └─ 开始录制后锁定 selectedBackend
 ```
 
-需要注意：
-
-- 未启用 Layer 模式时，控制器不会把 `Vulkan` 当成可录制后端。
-- 启用 Layer 模式后，目标进程需要重启，`Vulkan` 才会进入识别链。
-- 当前正式控制流不是“自动在三后端之间切换录制”，而是“先探测，再单选，再锁定”。
+注意事项：
+- 未启用 Layer 模式时，Vulkan 不作为可录制后端
+- 启用 Layer 后需重启目标进程
+- 控制流：探测 → 单选 → 锁定
 
 ---
 
 ## IPC 与会话
 
-当前实现不是命名管道请求/响应协议，而是以下共享对象组合：
+基于共享对象组合，非命名管道协议：
 
-```text
-SessionRegistry
-  └─ controller 与 target 的租约槽
-
-SharedState
-  ├─ connectionState
-  ├─ recorderState
-  ├─ availableBackendMask
-  ├─ selectedBackend
-  ├─ activeRecordingBackend
-  ├─ currentOutputPath
-  └─ lastErrorMessage
-
-PreviewFrame
-  └─ 最新预览帧
-
-LogBuffer
-  └─ 固定大小日志环形缓冲
-
-CommandEvent
-  └─ StartRecording / StopRecording
+```
+SessionRegistry      → controller 与 target 租约槽
+SharedState          → connectionState / recorderState / backends / outputPath / error
+PreviewFrame         → 最新预览帧
+LogBuffer            → 固定大小环形缓冲
+CommandEvent         → StartRecording / StopRecording
 ```
 
-命令流如下：
+命令流：
 
-```text
+```
 Controller
   ├─ 写入 commandType / commandSequence
   └─ SetEvent(CommandEvent)
 
 Hook
   ├─ 观察 commandSequence 变化
-  ├─ 在所选后端上处理命令
-  └─ 写回 acknowledgedSequence / lastHandledCommandType
+  ├─ 在所选后端处理命令
+  └─ 写回 acknowledgedSequence
 ```
 
 ---
 
 ## 帧捕获流程
 
-### DX11 捕获
+### DX11
 
-```text
-Present 路径
-    │
+```
+Present
     ├─ swapChain->GetBuffer(0, &backBuffer)
-    ├─ deviceContext->CopyResource(stagingTexture, backBuffer)
-    ├─ deviceContext->Map(stagingTexture, &mappedResource)
-    ├─ 逐行复制像素到编码输入缓冲
-    └─ deviceContext->Unmap(stagingTexture)
+    ├─ CopyResource(stagingTexture, backBuffer)
+    ├─ Map(stagingTexture) → 复制像素 → Unmap
 ```
 
-### DX12 捕获
+### DX12
 
-```text
-Present 路径
-    │
-    ├─ 获取当前 BackBuffer
-    ├─ 录制 copy 命令到 commandList
-    ├─ commandQueue->ExecuteCommandLists()
-    ├─ commandQueue->Signal(fence, value)
-    ├─ fence->SetEventOnCompletion() + WaitForSingleObject()
-    ├─ readbackBuffer->Map()
-    └─ 复制像素到编码输入缓冲
+```
+Present
+    ├─ 获取 BackBuffer
+    ├─ 录制 copy 命令
+    ├─ ExecuteCommandLists() → Signal(fence)
+    ├─ WaitForSingleObject(fence)
+    ├─ readbackBuffer->Map() → 复制像素
 ```
 
-### Vulkan 捕获
+### Vulkan
 
-```text
-vkQueuePresentKHR 路径
-    │
+```
+vkQueuePresentKHR
     ├─ CollectCompletedFrame()
-    │   ├─ 扫描所有 submitted readback slot
-    │   ├─ 对每个 slot 做 vkWaitForFences(..., timeout=0)
-    │   ├─ 找到最早完成的 slot
-    │   └─ 转换像素并交给编码器
-    │
+    │   ├─ 扫描 submitted readback slot
+    │   ├─ vkWaitForFences(timeout=0)
+    │   └─ 转换像素交给编码器
     └─ SubmitCapture()
-        ├─ 选择一个空闲 readback slot
-        ├─ 录制 image -> buffer copy 命令
-        ├─ vkQueueSubmit(..., slot.fence)
-        └─ 标记 slot 已提交
+        ├─ 选择空闲 slot
+        ├─ 录制 image → buffer copy
+        └─ vkQueueSubmit(slot.fence)
 ```
 
 稳态路径不使用 `vkQueueWaitIdle()`。
 
 ---
 
-## Media Foundation 编码流程
+## Media Foundation 编码
 
-```text
-MfWriter 初始化
-    │
+```
+初始化
     ├─ MFCreateSinkWriterFromURL(outputPath)
-    ├─ 设置视频输出类型 (H.264)
-    ├─ 设置视频输入类型 (RGB32 / NV12)
-    ├─ 设置音频类型 (AAC)
+    ├─ 设置视频输出 (H.264) / 输入 (RGB32/NV12)
+    ├─ 设置音频 (AAC)
     └─ BeginWriting()
 
-每帧写入
-    │
-    ├─ MFCreateMemoryBuffer(frameSize)
-    ├─ 复制像素到 buffer
+每帧
+    ├─ MFCreateMemoryBuffer → 复制像素
     ├─ MFCreateSample()
-    ├─ SetSampleTime(sampleTimeHns)
-    ├─ SetSampleDuration(frameDurationHns)
+    ├─ SetSampleTime / SetSampleDuration
     └─ WriteSample()
 ```
 
@@ -215,74 +174,67 @@ MfWriter 初始化
 
 ## 目录结构
 
-```text
+```
 InterRec/
-├── PluginVideoRecordHook/
-├── PluginVideoRecordController/
-├── PluginVideoRecordVkLayer/
-├── PluginVideoRecordLoaderMono/
-├── PluginVideoRecordLoaderIl2Cpp/
-├── PluginVideoRecordLoaderShared/
-├── Shared/
-├── DependencyRoots.props
-├── PluginVideoRecord.sln
-├── LICENSE
-└── README.md
+├── PluginVideoRecordHook/        # 录制宿主 DLL
+├── PluginVideoRecordController/  # Win32 控制器
+├── PluginVideoRecordVkLayer/     # Vulkan Layer DLL
+├── PluginVideoRecordLoaderMono/  # Mono 注入器
+├── PluginVideoRecordLoaderIl2Cpp/# IL2CPP 注入器
+├── PluginVideoRecordLoaderShared/# 共享注入逻辑
+├── Shared/                       # 公共头文件
+├── DependencyRoots.props         # 依赖路径配置
+└── PluginVideoRecord.sln
 ```
 
 ---
 
 ## 构建
 
-在 **Visual Studio 2022 Developer Command Prompt** 中执行：
+Visual Studio 2022 Developer Command Prompt：
 
 ```powershell
 msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64
 ```
 
-如果依赖目录不是兄弟仓库结构，可以覆盖依赖根目录：
+覆盖依赖根目录：
 
 ```powershell
-msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64 /p:DependencyRoot=F:\YourWorkspace\
+msbuild ... /p:DependencyRoot=F:\YourWorkspace\
 ```
 
-或分别覆盖：
+分别覆盖：
 
 ```powershell
-msbuild PluginVideoRecord.sln /p:Configuration=Release /p:Platform=x64 /p:UrhRoot=F:\Deps\Universal-Render-Hook\URH\ /p:VkhRoot=F:\Deps\VulkanHook\VulkanHook\
+msbuild ... /p:UrhRoot=F:\Deps\URH\ /p:VkhRoot=F:\Deps\VulkanHook\
 ```
 
 ---
 
 ## 运行时产物
 
-- `PluginVideoRecordHook.dll`
-  - 目标进程注入的录制宿主
-- `PluginVideoRecordController.exe`
-  - Win32 控制器
-- `PluginVideoRecordVkLayer.dll`
-  - Vulkan Layer 组件；缺少它时，控制器会禁用 Layer 模式开关
-- `PluginVideoRecordVkLayer.json`
-  - 由控制器在运行时生成和注册的 Layer manifest，不作为固定仓库文件跟踪
+| 产物 | 说明 |
+|:-----|:-----|
+| `PluginVideoRecordHook.dll` | 目标进程注入的录制宿主 |
+| `PluginVideoRecordController.exe` | Win32 控制器 |
+| `PluginVideoRecordVkLayer.dll` | Vulkan Layer；缺少时禁用 Layer 模式 |
+| `PluginVideoRecordVkLayer.json` | 控制器运行时生成的 Layer manifest |
 
 ---
 
 ## 依赖方向
 
-```text
-VulkanHook      Universal-Render-Hook
-      ↑                 ↑
-      └────────┬────────┘
-               ↑
-            InterRec
+```
+VulkanHook        Universal-Render-Hook
+      ↑                   ↑
+      └─────────┬─────────┘
+                ↑
+             InterRec
 ```
 
-- `InterRec -> Universal-Render-Hook`
-  - `PluginVideoRecordHook` 代码层的 DX11 / DX12 Hook、运行时快照、AutoHook 诊断，以及 Vulkan facade
-- `InterRec -> VulkanHook`
-  - 仓库 / 产物层仍直接依赖它，用于 `PluginVideoRecordVkLayer` 交付，以及 controller 侧 Layer manifest / 注册逻辑
-- `Universal-Render-Hook -> VulkanHook`
-  - 当 `AutoHook` 需要把 Vulkan 纳入候选时，通过 `VulkanHook` 获取 Vulkan runtime 与回调
+- **InterRec → URH**：DX11 / DX12 Hook、运行时快照、Vulkan 门面
+- **InterRec → VKH**：VkLayer 交付、Controller 侧 Layer 注册
+- **URH → VKH**：Vulkan 后端接入
 
 ---
 
