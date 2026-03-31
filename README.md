@@ -17,7 +17,7 @@
 
 > [!NOTE]
 > **图形路径**  
-> DX11 / DX12 通过 `Universal-Render-Hook` 接入，Vulkan 仅保留 Layer 路径通过 `VulkanHook` 接入。Hook 代码层通过 URH Vulkan 门面访问，不直接调用 VKH。
+> 代码层统一通过 `Universal-Render-Hook` 接入 DX11 / DX12 / Vulkan，不直接引用 VulkanHook。
 
 > [!IMPORTANT]
 > **控制模型**  
@@ -53,8 +53,7 @@ PluginVideoRecordController.exe
           ▼
 PluginVideoRecordHook.dll
   ├─ Host
-  │   ├─ URH AutoHook      (DX11 / DX12)
-  │   └─ URH Vulkan 门面   (backed by VulkanHook)
+  │   └─ URH AutoHook (DX11 / DX12 / Vulkan)
   ├─ VideoRecorder
   │   ├─ Dx11Capture
   │   ├─ Dx12Capture
@@ -225,16 +224,8 @@ msbuild ... /p:UrhRoot=F:\Deps\URH\ /p:VkhRoot=F:\Deps\VulkanHook\
 ## 依赖方向
 
 ```
-VulkanHook        Universal-Render-Hook
-      ↑                   ↑
-      └─────────┬─────────┘
-                ↑
-             InterRec
+Universal-Render-Hook ← InterRec
 ```
-
-- **InterRec → URH**：DX11 / DX12 Hook、运行时快照、Vulkan 门面
-- **InterRec → VKH**：VkLayer 交付、Controller 侧 Layer 注册
-- **URH → VKH**：Vulkan 后端接入
 
 ---
 
