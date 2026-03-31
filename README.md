@@ -18,7 +18,8 @@
 > [!NOTE]
 > **当前图形路径**  
 > `DX11 / DX12` 通过 `Universal-Render-Hook` 接入。  
-> `Vulkan` 只保留 `Layer` 路径，通过 `VulkanHook` 接入；当前仓库里已经没有正式的非 Layer Vulkan 录制路径。
+> `Vulkan` 只保留 `Layer` 路径，通过 `VulkanHook` 接入；当前仓库里已经没有正式的非 Layer Vulkan 录制路径。  
+> `PluginVideoRecordHook` 代码层现在通过 `URH` 的 Vulkan facade 使用这条路径，不再直接调用 `VKH::...`。
 
 > [!IMPORTANT]
 > **当前控制模型**  
@@ -55,8 +56,8 @@ PluginVideoRecordController.exe
           ▼
 PluginVideoRecordHook.dll
   ├─ PluginVideoRecordHost
-  │   ├─ URH AutoHook       (DX11 / DX12)
-  │   └─ VHK Layer Runtime  (Vulkan)
+  │   ├─ URH AutoHook           (DX11 / DX12)
+  │   └─ URH Vulkan Facade      (backed by VulkanHook)
   ├─ PluginVideoRecordVideoRecorder
   │   ├─ Dx11Capture
   │   ├─ Dx12Capture
@@ -277,9 +278,9 @@ VulkanHook      Universal-Render-Hook
 ```
 
 - `InterRec -> Universal-Render-Hook`
-  - DX11 / DX12 Hook、运行时快照、AutoHook 诊断
+  - `PluginVideoRecordHook` 代码层的 DX11 / DX12 Hook、运行时快照、AutoHook 诊断，以及 Vulkan facade
 - `InterRec -> VulkanHook`
-  - Vulkan Layer 交付、controller 侧 Layer 开关与 manifest 管理
+  - 仓库 / 产物层仍直接依赖它，用于 `PluginVideoRecordVkLayer` 交付，以及 controller 侧 Layer manifest / 注册逻辑
 - `Universal-Render-Hook -> VulkanHook`
   - 当 `AutoHook` 需要把 Vulkan 纳入候选时，通过 `VulkanHook` 获取 Vulkan runtime 与回调
 
