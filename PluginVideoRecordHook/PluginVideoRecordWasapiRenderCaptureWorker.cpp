@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "PluginVideoRecordInternalLogger.h"
+#include "PluginVideoRecordWasapiFormatLog.h"
 #include "PluginVideoRecordWasapiRenderCaptureInternal.h"
 
 namespace
@@ -86,12 +87,36 @@ namespace
         runtime.condition.notify_all();
     }
 
+    bool IsSameLoggedFormat(
+        const PluginVideoRecord::WasapiSourceFormat& left,
+        PluginVideoRecord::WasapiRenderFormatSource leftSource,
+        const PluginVideoRecord::WasapiSourceFormat& right,
+        PluginVideoRecord::WasapiRenderFormatSource rightSource)
+    {
+        return leftSource == rightSource &&
+            left.formatTag == right.formatTag &&
+            left.channels == right.channels &&
+            left.sampleRate == right.sampleRate &&
+            left.bitsPerSample == right.bitsPerSample &&
+            left.validBitsPerSample == right.validBitsPerSample &&
+            left.blockAlign == right.blockAlign &&
+            left.channelMask == right.channelMask &&
+            left.isFloat == right.isFloat &&
+            left.isPcm == right.isPcm;
+    }
+
     void WorkerThread()
     {
         namespace Internal = PluginVideoRecord::WasapiRenderCaptureInternal;
 
         PvrcInternalLogger::Log("[PVRC][WasapiRenderCapture] worker begin");
 
+        constexpr size_t MaxInputFormatLogs = 8;
+        bool hasLoggedInputFormat = false;
+        size_t inputFormatLogCount = 0;
+        PluginVideoRecord::WasapiSourceFormat lastLoggedFormat = {};
+        PluginVideoRecord::WasapiRenderFormatSource lastLoggedFormatSource =
+            PluginVideoRecord::WasapiRenderFormatSource::Unknown;
         Internal::CaptureRuntime& runtime = Internal::Runtime();
         for (;;)
         {
@@ -112,6 +137,24 @@ namespace
 
                 if (shouldProcess)
                 {
+                    if (inputFormatLogCount < MaxInputFormatLogs &&
+                        (!hasLoggedInputFormat ||
+                            !IsSameLoggedFormat(
+                                lastLoggedFormat,
+                                lastLoggedFormatSource,
+                                item.renderBuffer.format,
+                                item.renderBuffer.formatSource)))
+                    {
+                        PluginVideoRecord::LogWasapiSourceFormat(
+                            "worker-input",
+                            item.renderBuffer.format,
+                            item.renderBuffer.formatSource);
+                        lastLoggedFormat = item.renderBuffer.format;
+                        lastLoggedFormatSource = item.renderBuffer.formatSource;
+                        hasLoggedInputFormat = true;
+                        ++inputFormatLogCount;
+                    }
+
                     packet.sampleTimeHns = sampleTimeHns;
                     if (!writer->EnqueueAudioPacket(std::move(packet)))
                     {

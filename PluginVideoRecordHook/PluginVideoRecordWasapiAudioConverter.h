@@ -4,6 +4,12 @@
 
 namespace PluginVideoRecord
 {
+    enum class WasapiRenderFormatSource : std::uint8_t
+    {
+        Unknown,
+        AudioClientInitialize
+    };
+
     struct WasapiSourceFormat
     {
         WORD formatTag;
@@ -20,6 +26,7 @@ namespace PluginVideoRecord
     struct WasapiRenderBuffer
     {
         WasapiSourceFormat format;
+        WasapiRenderFormatSource formatSource;
         UINT32 frameCount;
         DWORD flags;
         std::vector<std::uint8_t> bytes;

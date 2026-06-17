@@ -7,6 +7,7 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
     struct PendingRenderSnapshot
     {
         WasapiSourceFormat format = {};
+        WasapiRenderFormatSource formatSource = WasapiRenderFormatSource::Unknown;
         BYTE* buffer = nullptr;
         UINT32 frameCount = 0;
         DWORD flags = 0;

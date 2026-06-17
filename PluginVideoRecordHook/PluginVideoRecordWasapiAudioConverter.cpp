@@ -1,17 +1,13 @@
 #include "pch.h"
 
-#include <cmath>
 #include <ksmedia.h>
-#include <limits>
 #include <mmreg.h>
 
 #include "PluginVideoRecordWasapiAudioConverter.h"
+#include "PluginVideoRecordWasapiSampleReader.h"
 
 namespace
 {
-    constexpr double PcmClampMin = -1.0;
-    constexpr double PcmClampMax = 1.0;
-
     bool IsFormatSubType(const WAVEFORMATEXTENSIBLE& format, const GUID& subtype)
     {
         return IsEqualGUID(format.SubFormat, subtype) != FALSE;
@@ -22,85 +18,11 @@ namespace
         return (renderBuffer.flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0;
     }
 
-    std::int32_t ReadSignedLittleEndian(const std::uint8_t* source, int byteCount)
-    {
-        std::int32_t value = 0;
-        for (int byteIndex = 0; byteIndex < byteCount; ++byteIndex)
-        {
-            value |= static_cast<std::int32_t>(source[byteIndex]) << (byteIndex * 8);
-        }
-
-        const int shift = (4 - byteCount) * 8;
-        return (value << shift) >> shift;
-    }
-
-    double ClampUnit(double value)
-    {
-        return std::max(PcmClampMin, std::min(PcmClampMax, value));
-    }
-
-    std::int16_t FloatToInt16(double value)
-    {
-        const double clamped = ClampUnit(value);
-        const double scaled = clamped * static_cast<double>(std::numeric_limits<std::int16_t>::max());
-        return static_cast<std::int16_t>(std::lround(scaled));
-    }
-
-    double ReadChannelSample(
-        const PluginVideoRecord::WasapiSourceFormat& format,
-        const std::uint8_t* frame,
-        WORD channelIndex)
-    {
-        const WORD bytesPerSample = static_cast<WORD>(format.bitsPerSample / 8);
-        const std::uint8_t* sample = frame + static_cast<size_t>(channelIndex) * bytesPerSample;
-
-        if (format.isFloat)
-        {
-            if (format.bitsPerSample == 32)
-            {
-                float value = 0.0f;
-                CopyMemory(&value, sample, sizeof(value));
-                return ClampUnit(static_cast<double>(value));
-            }
-
-            if (format.bitsPerSample == 64)
-            {
-                double value = 0.0;
-                CopyMemory(&value, sample, sizeof(value));
-                return ClampUnit(value);
-            }
-
-            return 0.0;
-        }
-
-        if (!format.isPcm)
-        {
-            return 0.0;
-        }
-
-        switch (format.bitsPerSample)
-        {
-        case 8:
-            return (static_cast<int>(sample[0]) - 128) / 128.0;
-
-        case 16:
-            return static_cast<double>(ReadSignedLittleEndian(sample, 2)) / 32768.0;
-
-        case 24:
-            return static_cast<double>(ReadSignedLittleEndian(sample, 3)) / 8388608.0;
-
-        case 32:
-            return static_cast<double>(ReadSignedLittleEndian(sample, 4)) / 2147483648.0;
-
-        default:
-            return 0.0;
-        }
-    }
-
     void ReadStereoFrame(
         const PluginVideoRecord::WasapiSourceFormat& format,
         const std::uint8_t* data,
         UINT32 sourceFrameIndex,
+        PluginVideoRecord::WasapiSampleReader::PcmValidBitsAlignment pcmAlignment,
         double& left,
         double& right)
     {
@@ -109,13 +31,25 @@ namespace
 
         if (format.channels == 1)
         {
-            left = ReadChannelSample(format, frame, 0);
+            left = PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+                format,
+                frame,
+                0,
+                pcmAlignment);
             right = left;
             return;
         }
 
-        left = ReadChannelSample(format, frame, 0);
-        right = ReadChannelSample(format, frame, 1);
+        left = PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+            format,
+            frame,
+            0,
+            pcmAlignment);
+        right = PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+            format,
+            frame,
+            1,
+            pcmAlignment);
 
         if (format.channels == 2)
         {
@@ -127,7 +61,12 @@ namespace
 
         if (format.channels > 2)
         {
-            const double center = ReadChannelSample(format, frame, 2) * 0.70710678118;
+            const double center =
+                PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+                    format,
+                    frame,
+                    2,
+                    pcmAlignment) * 0.70710678118;
             left += center;
             right += center;
             leftWeight += 0.70710678118;
@@ -136,7 +75,12 @@ namespace
 
         if (format.channels > 3)
         {
-            const double lfe = ReadChannelSample(format, frame, 3) * 0.25;
+            const double lfe =
+                PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+                    format,
+                    frame,
+                    3,
+                    pcmAlignment) * 0.25;
             left += lfe;
             right += lfe;
             leftWeight += 0.25;
@@ -145,19 +89,34 @@ namespace
 
         if (format.channels > 4)
         {
-            left += ReadChannelSample(format, frame, 4) * 0.70710678118;
+            left +=
+                PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+                    format,
+                    frame,
+                    4,
+                    pcmAlignment) * 0.70710678118;
             leftWeight += 0.70710678118;
         }
 
         if (format.channels > 5)
         {
-            right += ReadChannelSample(format, frame, 5) * 0.70710678118;
+            right +=
+                PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+                    format,
+                    frame,
+                    5,
+                    pcmAlignment) * 0.70710678118;
             rightWeight += 0.70710678118;
         }
 
         for (WORD channelIndex = 6; channelIndex < format.channels; ++channelIndex)
         {
-            const double value = ReadChannelSample(format, frame, channelIndex) * 0.5;
+            const double value =
+                PluginVideoRecord::WasapiSampleReader::ReadChannelSample(
+                    format,
+                    frame,
+                    channelIndex,
+                    pcmAlignment) * 0.5;
             if ((channelIndex & 1) == 0)
             {
                 left += value;
@@ -177,6 +136,7 @@ namespace
     void ReadResampledStereoFrame(
         const PluginVideoRecord::WasapiRenderBuffer& renderBuffer,
         size_t outputFrameIndex,
+        PluginVideoRecord::WasapiSampleReader::PcmValidBitsAlignment pcmAlignment,
         double& left,
         double& right)
     {
@@ -202,8 +162,20 @@ namespace
         double firstRight = 0.0;
         double secondLeft = 0.0;
         double secondRight = 0.0;
-        ReadStereoFrame(renderBuffer.format, renderBuffer.bytes.data(), firstFrame, firstLeft, firstRight);
-        ReadStereoFrame(renderBuffer.format, renderBuffer.bytes.data(), secondFrame, secondLeft, secondRight);
+        ReadStereoFrame(
+            renderBuffer.format,
+            renderBuffer.bytes.data(),
+            firstFrame,
+            pcmAlignment,
+            firstLeft,
+            firstRight);
+        ReadStereoFrame(
+            renderBuffer.format,
+            renderBuffer.bytes.data(),
+            secondFrame,
+            pcmAlignment,
+            secondLeft,
+            secondRight);
 
         left = firstLeft + (secondLeft - firstLeft) * blend;
         right = firstRight + (secondRight - firstRight) * blend;
@@ -269,6 +241,11 @@ namespace PluginVideoRecord
             return false;
         }
 
+        if (format.validBitsPerSample == 0 || format.validBitsPerSample > format.bitsPerSample)
+        {
+            format.validBitsPerSample = format.bitsPerSample;
+        }
+
         const WORD expectedMinimumBlockAlign =
             static_cast<WORD>(format.channels * (format.bitsPerSample / 8));
         return format.blockAlign >= expectedMinimumBlockAlign;
@@ -309,15 +286,28 @@ namespace PluginVideoRecord
             static_cast<LONGLONG>(outputFrameCount) * 10000000LL / DefaultAudioSampleRate;
         packet.samples.resize(outputBytes);
 
+        const WasapiSampleReader::PcmValidBitsAlignment pcmAlignment =
+            WasapiSampleReader::DetectPcmValidBitsAlignment(
+                renderBuffer.format,
+                renderBuffer.bytes.empty() ? nullptr : renderBuffer.bytes.data(),
+                renderBuffer.frameCount);
+
         std::int16_t* destination = reinterpret_cast<std::int16_t*>(packet.samples.data());
         for (size_t outputFrameIndex = 0; outputFrameIndex < outputFrameCount; ++outputFrameIndex)
         {
             double left = 0.0;
             double right = 0.0;
-            ReadResampledStereoFrame(renderBuffer, outputFrameIndex, left, right);
+            ReadResampledStereoFrame(
+                renderBuffer,
+                outputFrameIndex,
+                pcmAlignment,
+                left,
+                right);
 
-            destination[outputFrameIndex * 2] = FloatToInt16(left);
-            destination[outputFrameIndex * 2 + 1] = FloatToInt16(right);
+            destination[outputFrameIndex * 2] =
+                WasapiSampleReader::FloatToInt16(left);
+            destination[outputFrameIndex * 2 + 1] =
+                WasapiSampleReader::FloatToInt16(right);
         }
 
         return true;

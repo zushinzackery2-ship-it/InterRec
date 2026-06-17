@@ -83,6 +83,8 @@
     <ClCompile Include="PluginVideoRecordVulkanCaptureResources.cpp" />
     <ClCompile Include="PluginVideoRecordVulkanCaptureFrame.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiAudioConverter.cpp" />
+    <ClCompile Include="PluginVideoRecordWasapiFormatLog.cpp" />
+    <ClCompile Include="PluginVideoRecordWasapiSampleReader.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiRenderCapture.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiRenderCaptureInternal.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiRenderCaptureWorker.cpp" />
@@ -129,6 +131,8 @@
     <ClInclude Include="PluginVideoRecordDx12Capture.h" />
     <ClInclude Include="PluginVideoRecordVulkanCapture.h" />
     <ClInclude Include="PluginVideoRecordWasapiAudioConverter.h" />
+    <ClInclude Include="PluginVideoRecordWasapiFormatLog.h" />
+    <ClInclude Include="PluginVideoRecordWasapiSampleReader.h" />
     <ClInclude Include="PluginVideoRecordWasapiRenderCapture.h" />
     <ClInclude Include="PluginVideoRecordWasapiRenderCaptureInternal.h" />
     <ClInclude Include="PluginVideoRecordWasapiRenderHook.h" />

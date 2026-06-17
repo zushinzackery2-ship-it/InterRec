@@ -83,6 +83,8 @@
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCaptureResources.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCaptureFrame.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiAudioConverter.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiFormatLog.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiSampleReader.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCapture.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCaptureInternal.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCaptureWorker.cpp" />
@@ -133,6 +135,8 @@
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordDx12Capture.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCapture.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiAudioConverter.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiFormatLog.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiSampleReader.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCapture.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCaptureInternal.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHook.h" />

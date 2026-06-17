@@ -82,6 +82,7 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         std::lock_guard<std::mutex> lock(runtime.mutex);
         AudioClientState& state = runtime.audioClients[self];
         state.format = sourceFormat;
+        state.formatSource = WasapiRenderFormatSource::AudioClientInitialize;
         state.formatReady = true;
         return hr;
     }
@@ -110,26 +111,18 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         HookRuntime& runtime = Runtime();
         std::lock_guard<std::mutex> lock(runtime.mutex);
         const auto audioState = runtime.audioClients.find(self);
-        if (audioState == runtime.audioClients.end() &&
-            runtime.defaultRenderFormatReady)
-        {
-            AudioClientState fallbackState = {};
-            fallbackState.format = runtime.defaultRenderFormat;
-            fallbackState.formatReady = true;
-            runtime.audioClients[self] = fallbackState;
-        }
-
-        const auto adoptedAudioState = runtime.audioClients.find(self);
-        if (adoptedAudioState == runtime.audioClients.end() || !adoptedAudioState->second.formatReady)
+        if (audioState == runtime.audioClients.end() || !audioState->second.formatReady)
         {
             return hr;
         }
 
         auto* renderClient = static_cast<IAudioRenderClient*>(*service);
         RenderClientState& renderState = runtime.renderClients[renderClient];
-        renderState.format = adoptedAudioState->second.format;
+        renderState.format = audioState->second.format;
+        renderState.formatSource = audioState->second.formatSource;
         renderState.pendingBuffer = nullptr;
         renderState.pendingFrameCount = 0;
+        renderState.formatReady = true;
         renderState.pending = false;
         return hr;
     }
@@ -173,14 +166,7 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         HookRuntime& runtime = Runtime();
         std::lock_guard<std::mutex> lock(runtime.mutex);
         auto renderState = runtime.renderClients.find(self);
-        if (renderState == runtime.renderClients.end() && runtime.defaultRenderFormatReady)
-        {
-            RenderClientState fallbackState = {};
-            fallbackState.format = runtime.defaultRenderFormat;
-            renderState = runtime.renderClients.emplace(self, fallbackState).first;
-        }
-
-        if (renderState == runtime.renderClients.end())
+        if (renderState == runtime.renderClients.end() || !renderState->second.formatReady)
         {
             return hr;
         }
@@ -215,6 +201,7 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
             if (snapshot.valid)
             {
                 renderBuffer.format = snapshot.format;
+                renderBuffer.formatSource = snapshot.formatSource;
                 renderBuffer.frameCount = snapshot.frameCount;
                 renderBuffer.flags = snapshot.flags;
                 if (snapshot.silent)

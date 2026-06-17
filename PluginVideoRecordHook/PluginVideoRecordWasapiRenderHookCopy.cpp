@@ -45,7 +45,9 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         std::lock_guard<std::mutex> lock(runtime.mutex);
 
         auto renderState = runtime.renderClients.find(renderClient);
-        if (renderState == runtime.renderClients.end() || !renderState->second.pending)
+        if (renderState == runtime.renderClients.end() ||
+            !renderState->second.formatReady ||
+            !renderState->second.pending)
         {
             return snapshot;
         }
@@ -53,6 +55,7 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         const UINT32 copyFrameCount = std::min(frameCount, renderState->second.pendingFrameCount);
 
         snapshot.format = renderState->second.format;
+        snapshot.formatSource = renderState->second.formatSource;
         snapshot.buffer = renderState->second.pendingBuffer;
         snapshot.frameCount = copyFrameCount;
         snapshot.flags = flags;

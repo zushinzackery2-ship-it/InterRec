@@ -24,14 +24,17 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
     struct AudioClientState
     {
         WasapiSourceFormat format = {};
+        WasapiRenderFormatSource formatSource = WasapiRenderFormatSource::Unknown;
         bool formatReady = false;
     };
 
     struct RenderClientState
     {
         WasapiSourceFormat format = {};
+        WasapiRenderFormatSource formatSource = WasapiRenderFormatSource::Unknown;
         BYTE* pendingBuffer = nullptr;
         UINT32 pendingFrameCount = 0;
+        bool formatReady = false;
         bool pending = false;
     };
 
@@ -49,8 +52,6 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         VtablePatch renderClientReleasePatch;
         std::unordered_map<IAudioClient*, AudioClientState> audioClients;
         std::unordered_map<IAudioRenderClient*, RenderClientState> renderClients;
-        WasapiSourceFormat defaultRenderFormat = {};
-        bool defaultRenderFormatReady = false;
         bool installed = false;
     };
 
