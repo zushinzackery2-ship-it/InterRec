@@ -4,7 +4,7 @@
 #include "PluginVideoRecordDx12Capture.h"
 #include "PluginVideoRecordVulkanCapture.h"
 #include "PluginVideoRecordMfWriter.h"
-#include "PluginVideoRecordProcessAudioCapture.h"
+#include "PluginVideoRecordWasapiRenderCapture.h"
 
 namespace PluginVideoRecord
 {
@@ -39,7 +39,7 @@ namespace PluginVideoRecord
         PluginVideoRecordDx11Capture dx11Capture_;
         PluginVideoRecordDx12Capture dx12Capture_;
         PluginVideoRecordVulkanCapture vulkanCapture_;
-        PluginVideoRecordProcessAudioCapture audioCapture_;
+        PluginVideoRecordWasapiRenderCapture audioCapture_;
         PluginVideoRecordMfWriter writer_;
         LARGE_INTEGER performanceFrequency_;
         LARGE_INTEGER startCounter_;

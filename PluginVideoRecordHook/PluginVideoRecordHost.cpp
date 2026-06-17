@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 
 #include "PluginVideoRecordHost.h"
+#include "PluginVideoRecordWasapiRenderCapture.h"
 
 namespace
 {
@@ -61,6 +62,16 @@ namespace PluginVideoRecord
         ipcServer_.SetActiveRecordingBackend(GraphicsBackend::Unknown);
         PublishState(RecorderState::Standby, L"", L"", 0);
         LogMessage(L"宿主已启动，等待图形 Hook。");
+
+        std::wstring audioHookError;
+        if (PluginVideoRecordWasapiRenderCapture::InstallHooks(audioHookError))
+        {
+            LogMessage(L"WASAPI render 音频 Hook 安装成功。");
+        }
+        else
+        {
+            LogMessage(L"WASAPI render 音频 Hook 安装失败：" + audioHookError);
+        }
 
         vulkanLayerModule_ = IsCurrentModuleVulkanLayer(moduleHandle_);
         const bool installOk = vulkanLayerModule_

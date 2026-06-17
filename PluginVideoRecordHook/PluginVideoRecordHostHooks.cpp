@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 
 #include "PluginVideoRecordHost.h"
+#include "PluginVideoRecordWasapiRenderCapture.h"
 
 namespace PluginVideoRecord
 {
@@ -69,6 +70,8 @@ namespace PluginVideoRecord
 
     void PluginVideoRecordHost::ShutdownHooks()
     {
+        PluginVideoRecordWasapiRenderCapture::ShutdownHooks();
+
         if (autoHookInstalled_)
         {
             URH::Shutdown();

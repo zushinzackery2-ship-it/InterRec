@@ -1,6 +1,8 @@
 .vs/
 .vscode/
 .idea/
+.auto-index-mcp/
+Task-Status.md
 *.suo
 *.user
 *.userosscache

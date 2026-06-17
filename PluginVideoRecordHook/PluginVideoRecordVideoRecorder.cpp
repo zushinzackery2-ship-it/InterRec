@@ -221,7 +221,7 @@ namespace PluginVideoRecord
             return false;
         }
 
-        if (!audioCapture_.Start(GetCurrentProcessId(), startQpcHns_, &writer_, error))
+        if (!audioCapture_.Start(&writer_, error))
         {
             writer_.Stop();
             qpcReady_ = false;

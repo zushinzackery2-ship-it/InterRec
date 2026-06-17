@@ -31,7 +31,7 @@
 | **DX12 帧捕获** | 复制 BackBuffer 到 readback buffer，fence 等待完成 |
 | **Vulkan 帧捕获** | 独立 readback slot + fence 轮询收集已完成帧 |
 | **MF 编码** | `IMFSinkWriter` 写入 H.264 MP4 |
-| **进程音频捕获** | WASAPI loopback 捕获与混流 |
+| **进程音频捕获** | WASAPI render vtable hook 捕获音频引擎前 PCM，隔离系统主音量 |
 | **QPC 时间戳** | `QueryPerformanceCounter` 驱动音视频时间轴 |
 | **共享内存 IPC** | Controller 与 Hook 通过共享内存交换状态、日志、预览、命令 |
 | **后端单选** | 可用后端中单选录制后端，录制期间锁定 |
@@ -58,7 +58,7 @@ PluginVideoRecordHook.dll
   │   ├─ Dx11Capture
   │   ├─ Dx12Capture
   │   └─ VulkanCapture
-  ├─ ProcessAudioCapture
+  ├─ WasapiRenderCapture
   ├─ MfWriter
   └─ PreviewPublisher
 ```
