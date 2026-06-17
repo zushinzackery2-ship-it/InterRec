@@ -83,14 +83,24 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         HookRuntime& runtime = Runtime();
         std::lock_guard<std::mutex> lock(runtime.mutex);
         const auto audioState = runtime.audioClients.find(self);
-        if (audioState == runtime.audioClients.end() || !audioState->second.formatReady)
+        if (audioState == runtime.audioClients.end() &&
+            runtime.defaultRenderFormatReady)
+        {
+            AudioClientState fallbackState = {};
+            fallbackState.format = runtime.defaultRenderFormat;
+            fallbackState.formatReady = true;
+            runtime.audioClients[reinterpret_cast<IAudioClient*>(self)] = fallbackState;
+        }
+
+        const auto adoptedAudioState = runtime.audioClients.find(self);
+        if (adoptedAudioState == runtime.audioClients.end() || !adoptedAudioState->second.formatReady)
         {
             return hr;
         }
 
         auto* renderClient = static_cast<IAudioRenderClient*>(*service);
         RenderClientState& renderState = runtime.renderClients[renderClient];
-        renderState.format = audioState->second.format;
+        renderState.format = adoptedAudioState->second.format;
         renderState.pendingBuffer = nullptr;
         renderState.pendingFrameCount = 0;
         renderState.pending = false;

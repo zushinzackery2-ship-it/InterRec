@@ -1,5 +1,6 @@
 #include "pch.h"
 
+#include "PluginVideoRecordInternalLogger.h"
 #include "PluginVideoRecordWasapiRenderCaptureInternal.h"
 #include "PluginVideoRecordWasapiRenderHook.h"
 
@@ -31,6 +32,7 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
         {
             CaptureRuntime& runtime = Runtime();
             std::unique_lock<std::mutex> lock(runtime.mutex);
+            runtime.acceptingRenderBuffers.store(false, std::memory_order_release);
             runtime.recording = false;
             runtime.writer = nullptr;
             ++runtime.activeSessionId;
@@ -54,9 +56,20 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
     void SubmitRenderBuffer(WasapiRenderBuffer&& renderBuffer)
     {
         CaptureRuntime& runtime = Runtime();
+        if (!IsAcceptingRenderBuffersFast())
+        {
+            return;
+        }
+
         const size_t byteCount = GetQueuedBytes(renderBuffer);
 
-        std::lock_guard<std::mutex> lock(runtime.mutex);
+        std::unique_lock<std::mutex> lock(runtime.mutex, std::try_to_lock);
+        if (!lock.owns_lock())
+        {
+            runtime.droppedBuffers.fetch_add(1, std::memory_order_relaxed);
+            return;
+        }
+
         if (!runtime.recording || runtime.failed || !runtime.writer)
         {
             return;
@@ -70,7 +83,18 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
 
         if (runtime.queuedBytes + byteCount > RawQueueBudgetBytes)
         {
-            SetFailureLocked(runtime, L"WASAPI render 音频采集队列溢出。");
+            const size_t droppedBuffers =
+                runtime.droppedBuffers.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (droppedBuffers == 1 || (droppedBuffers % 128) == 0)
+            {
+                PvrcInternalLogger::Log(
+                    "[PVRC][WasapiRenderCapture] queue pressure drop: dropped=%zu queued=%zu KB incoming=%zu KB budget=%zu KB",
+                    droppedBuffers,
+                    runtime.queuedBytes / 1024ull,
+                    byteCount / 1024ull,
+                    RawQueueBudgetBytes / 1024ull);
+            }
+
             return;
         }
 
@@ -111,8 +135,10 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
         runtime.writer = writer;
         runtime.recording = true;
         runtime.failed = false;
+        runtime.acceptingRenderBuffers.store(true, std::memory_order_release);
         runtime.lastError.clear();
         runtime.nextSampleTimeHns = 0;
+        runtime.droppedBuffers.store(0, std::memory_order_relaxed);
         ClearQueueLocked(runtime);
         return true;
     }
@@ -121,6 +147,7 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
     {
         CaptureRuntime& runtime = Runtime();
         std::unique_lock<std::mutex> lock(runtime.mutex);
+        runtime.acceptingRenderBuffers.store(false, std::memory_order_release);
         runtime.recording = false;
         runtime.writer = nullptr;
         ++runtime.activeSessionId;

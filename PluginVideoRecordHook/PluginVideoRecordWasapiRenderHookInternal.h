@@ -49,6 +49,8 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         VtablePatch renderClientReleasePatch;
         std::unordered_map<IAudioClient*, AudioClientState> audioClients;
         std::unordered_map<IAudioRenderClient*, RenderClientState> renderClients;
+        WasapiSourceFormat defaultRenderFormat = {};
+        bool defaultRenderFormatReady = false;
         bool installed = false;
     };
 
@@ -89,6 +91,13 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
     std::wstring BuildHresultText(const wchar_t* text, HRESULT hr);
     std::wstring BuildWin32Text(const wchar_t* text, DWORD error);
     bool TryCopyMemory(void* destination, const void* source, size_t size);
+    bool TryCopyMemoryCached(
+        void* destination,
+        const void* source,
+        size_t size,
+        const void*& cachedAddress,
+        size_t& cachedBytes,
+        bool& cachedValid);
     bool TryGetVtable(void* object, void*** vtable);
     bool PatchVtableSlot(
         void** vtable,

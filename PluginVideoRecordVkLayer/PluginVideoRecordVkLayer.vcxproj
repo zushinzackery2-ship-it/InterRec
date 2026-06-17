@@ -90,6 +90,7 @@
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookCallbacks.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookClient3.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookClient3Callbacks.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookCopy.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookPatch.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfSinkWriterFactory.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordMfAudioInterop.cpp" />
@@ -135,6 +136,7 @@
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCapture.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderCaptureInternal.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHook.h" />
+    <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookCopy.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordWasapiRenderHookInternal.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfInternal.h" />
     <ClInclude Include="..\PluginVideoRecordHook\PluginVideoRecordMfQueue.h" />

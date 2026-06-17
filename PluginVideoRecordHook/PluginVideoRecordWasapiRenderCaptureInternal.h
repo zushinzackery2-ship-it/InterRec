@@ -26,6 +26,8 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
         bool hooksInstalled = false;
         size_t queuedBytes = 0;
         size_t processingCount = 0;
+        std::atomic<bool> acceptingRenderBuffers = false;
+        std::atomic<size_t> droppedBuffers = 0;
         ULONGLONG activeSessionId = 0;
         LONGLONG nextSampleTimeHns = 0;
         std::wstring lastError;
@@ -35,6 +37,7 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
     size_t GetQueuedBytes(const WasapiRenderBuffer& renderBuffer);
     void ClearQueueLocked(CaptureRuntime& runtime);
     void SetFailureLocked(CaptureRuntime& runtime, const std::wstring& error);
+    bool IsAcceptingRenderBuffersFast();
     bool EnsureWorkerStarted(std::wstring& error);
     void StopWorker();
 

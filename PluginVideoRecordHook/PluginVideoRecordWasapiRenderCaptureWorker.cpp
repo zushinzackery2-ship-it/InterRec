@@ -167,11 +167,17 @@ namespace PluginVideoRecord::WasapiRenderCaptureInternal
             return;
         }
 
+        runtime.acceptingRenderBuffers.store(false, std::memory_order_release);
         runtime.failed = true;
         runtime.lastError = error;
         LogCaptureFailure(error);
         ClearQueueLocked(runtime);
         runtime.condition.notify_all();
+    }
+
+    bool IsAcceptingRenderBuffersFast()
+    {
+        return Runtime().acceptingRenderBuffers.load(std::memory_order_acquire);
     }
 
     bool EnsureWorkerStarted(std::wstring& error)

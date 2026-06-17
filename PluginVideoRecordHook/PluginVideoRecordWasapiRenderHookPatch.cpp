@@ -82,6 +82,48 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         }
     }
 
+    bool TryCopyMemoryCached(
+        void* destination,
+        const void* source,
+        size_t size,
+        const void*& cachedAddress,
+        size_t& cachedBytes,
+        bool& cachedValid)
+    {
+        if (!destination || !source || size == 0)
+        {
+            return false;
+        }
+
+        if (!cachedValid || cachedAddress != source || cachedBytes < size)
+        {
+            if (!IsReadableRange(source, size))
+            {
+                cachedValid = false;
+                cachedAddress = nullptr;
+                cachedBytes = 0;
+                return false;
+            }
+
+            cachedAddress = source;
+            cachedBytes = size;
+            cachedValid = true;
+        }
+
+        __try
+        {
+            CopyMemory(destination, source, size);
+            return true;
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            cachedValid = false;
+            cachedAddress = nullptr;
+            cachedBytes = 0;
+            return false;
+        }
+    }
+
     bool TryGetVtable(void* object, void*** vtable)
     {
         if (!object || !vtable)

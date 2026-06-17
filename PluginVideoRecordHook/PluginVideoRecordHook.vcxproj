@@ -90,6 +90,7 @@
     <ClCompile Include="PluginVideoRecordWasapiRenderHookCallbacks.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiRenderHookClient3.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiRenderHookClient3Callbacks.cpp" />
+    <ClCompile Include="PluginVideoRecordWasapiRenderHookCopy.cpp" />
     <ClCompile Include="PluginVideoRecordWasapiRenderHookPatch.cpp" />
     <ClCompile Include="PluginVideoRecordMfSinkWriterFactory.cpp" />
     <ClCompile Include="PluginVideoRecordMfAudioInterop.cpp" />
@@ -131,6 +132,7 @@
     <ClInclude Include="PluginVideoRecordWasapiRenderCapture.h" />
     <ClInclude Include="PluginVideoRecordWasapiRenderCaptureInternal.h" />
     <ClInclude Include="PluginVideoRecordWasapiRenderHook.h" />
+    <ClInclude Include="PluginVideoRecordWasapiRenderHookCopy.h" />
     <ClInclude Include="PluginVideoRecordWasapiRenderHookInternal.h" />
     <ClInclude Include="PluginVideoRecordMfInternal.h" />
     <ClInclude Include="PluginVideoRecordMfQueue.h" />

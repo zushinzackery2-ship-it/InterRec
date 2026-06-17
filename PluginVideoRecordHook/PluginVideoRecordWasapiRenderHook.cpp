@@ -48,6 +48,7 @@ namespace
 
     bool InitializeProbeRenderClient(
         IAudioClient* audioClient,
+        PluginVideoRecord::WasapiSourceFormat& defaultRenderFormat,
         Microsoft::WRL::ComPtr<IAudioRenderClient>& renderClient,
         std::wstring& error)
     {
@@ -56,6 +57,13 @@ namespace
         if (FAILED(hr) || !mixFormat)
         {
             error = BuildHresultText(L"读取 WASAPI mix format 失败。", hr);
+            return false;
+        }
+
+        if (!TryParseWasapiSourceFormat(mixFormat, defaultRenderFormat))
+        {
+            CoTaskMemFree(mixFormat);
+            error = L"解析 WASAPI 默认输出格式失败。";
             return false;
         }
 
@@ -172,6 +180,7 @@ namespace PluginVideoRecord
             return false;
         }
 
+        WasapiSourceFormat defaultRenderFormat = {};
         Microsoft::WRL::ComPtr<IAudioClient> audioClient;
         Microsoft::WRL::ComPtr<IAudioRenderClient> renderClient;
         if (!CreateProbeAudioClient(audioClient, error))
@@ -213,7 +222,7 @@ namespace PluginVideoRecord
             }
         }
 
-        if (!InitializeProbeRenderClient(audioClient.Get(), renderClient, error))
+        if (!InitializeProbeRenderClient(audioClient.Get(), defaultRenderFormat, renderClient, error))
         {
             ShutdownWasapiRenderHooks();
             audioClient.Reset();
@@ -246,6 +255,8 @@ namespace PluginVideoRecord
             renderClientPatched = PatchRenderClientVtable(renderClientVtable, runtime, error);
             if (renderClientPatched)
             {
+                runtime.defaultRenderFormat = defaultRenderFormat;
+                runtime.defaultRenderFormatReady = true;
                 runtime.installed = true;
             }
         }
@@ -284,6 +295,8 @@ namespace PluginVideoRecord
         RestoreAudioClientPatches(runtime);
         runtime.renderClients.clear();
         runtime.audioClients.clear();
+        runtime.defaultRenderFormat = {};
+        runtime.defaultRenderFormatReady = false;
         runtime.installed = false;
         PvrcInternalLogger::Log("[PVRC][WasapiRenderHook] shutdown");
     }

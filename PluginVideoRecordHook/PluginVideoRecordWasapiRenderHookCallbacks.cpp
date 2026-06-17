@@ -1,6 +1,8 @@
 #include "pch.h"
 
 #include "PluginVideoRecordWasapiRenderCapture.h"
+#include "PluginVideoRecordWasapiRenderCaptureInternal.h"
+#include "PluginVideoRecordWasapiRenderHookCopy.h"
 #include "PluginVideoRecordWasapiRenderHookInternal.h"
 
 namespace
@@ -38,22 +40,6 @@ namespace
         return reinterpret_cast<UnknownReleaseFn>(Runtime().renderClientReleasePatch.original);
     }
 
-    bool CopyRenderBytes(
-        const PluginVideoRecord::WasapiSourceFormat& format,
-        BYTE* source,
-        UINT32 frameCount,
-        std::vector<std::uint8_t>& destination)
-    {
-        const size_t byteCount =
-            PluginVideoRecord::GetWasapiRenderBufferByteCount(format, frameCount);
-        if (byteCount == 0)
-        {
-            return false;
-        }
-
-        destination.resize(byteCount);
-        return TryCopyMemory(destination.data(), source, byteCount);
-    }
 }
 
 namespace PluginVideoRecord::WasapiRenderHookInternal
@@ -124,14 +110,24 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         HookRuntime& runtime = Runtime();
         std::lock_guard<std::mutex> lock(runtime.mutex);
         const auto audioState = runtime.audioClients.find(self);
-        if (audioState == runtime.audioClients.end() || !audioState->second.formatReady)
+        if (audioState == runtime.audioClients.end() &&
+            runtime.defaultRenderFormatReady)
+        {
+            AudioClientState fallbackState = {};
+            fallbackState.format = runtime.defaultRenderFormat;
+            fallbackState.formatReady = true;
+            runtime.audioClients[self] = fallbackState;
+        }
+
+        const auto adoptedAudioState = runtime.audioClients.find(self);
+        if (adoptedAudioState == runtime.audioClients.end() || !adoptedAudioState->second.formatReady)
         {
             return hr;
         }
 
         auto* renderClient = static_cast<IAudioRenderClient*>(*service);
         RenderClientState& renderState = runtime.renderClients[renderClient];
-        renderState.format = audioState->second.format;
+        renderState.format = adoptedAudioState->second.format;
         renderState.pendingBuffer = nullptr;
         renderState.pendingFrameCount = 0;
         renderState.pending = false;
@@ -177,6 +173,13 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         HookRuntime& runtime = Runtime();
         std::lock_guard<std::mutex> lock(runtime.mutex);
         auto renderState = runtime.renderClients.find(self);
+        if (renderState == runtime.renderClients.end() && runtime.defaultRenderFormatReady)
+        {
+            RenderClientState fallbackState = {};
+            fallbackState.format = runtime.defaultRenderFormat;
+            renderState = runtime.renderClients.emplace(self, fallbackState).first;
+        }
+
         if (renderState == runtime.renderClients.end())
         {
             return hr;
@@ -202,33 +205,30 @@ namespace PluginVideoRecord::WasapiRenderHookInternal
         WasapiRenderBuffer renderBuffer = {};
         bool hasBuffer = false;
 
-        if (self && frameCount > 0)
+        if (self &&
+            frameCount > 0 &&
+            PluginVideoRecord::WasapiRenderCaptureInternal::IsAcceptingRenderBuffersFast())
         {
             HookRuntime& runtime = Runtime();
-            std::lock_guard<std::mutex> lock(runtime.mutex);
-            auto renderState = runtime.renderClients.find(self);
-            if (renderState != runtime.renderClients.end() && renderState->second.pending)
+            const PendingRenderSnapshot snapshot =
+                TakePendingRenderSnapshot(runtime, self, frameCount, flags);
+            if (snapshot.valid)
             {
-                const UINT32 copyFrameCount = std::min(frameCount, renderState->second.pendingFrameCount);
-                renderBuffer.format = renderState->second.format;
-                renderBuffer.frameCount = copyFrameCount;
-                renderBuffer.flags = flags;
-                if ((flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0)
+                renderBuffer.format = snapshot.format;
+                renderBuffer.frameCount = snapshot.frameCount;
+                renderBuffer.flags = snapshot.flags;
+                if (snapshot.silent)
                 {
-                    hasBuffer = copyFrameCount > 0;
+                    hasBuffer = true;
                 }
                 else
                 {
-                    hasBuffer = CopyRenderBytes(
-                        renderState->second.format,
-                        renderState->second.pendingBuffer,
-                        copyFrameCount,
+                    hasBuffer = CopyRenderBytesCached(
+                        snapshot.format,
+                        snapshot.buffer,
+                        snapshot.frameCount,
                         renderBuffer.bytes);
                 }
-
-                renderState->second.pending = false;
-                renderState->second.pendingBuffer = nullptr;
-                renderState->second.pendingFrameCount = 0;
             }
         }
 
