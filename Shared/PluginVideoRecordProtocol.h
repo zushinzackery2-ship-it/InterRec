@@ -14,7 +14,7 @@ namespace PluginVideoRecord
     constexpr DWORD SessionLeaseTimeoutMs = 2000;
     constexpr size_t MaxSessionCount = 16;
     constexpr UINT DefaultVideoBitrate = 12000000;
-    constexpr UINT DefaultFrameRate = 120;
+    constexpr UINT DefaultFrameRate = 60;
     constexpr UINT DefaultAudioSampleRate = 44100;
     constexpr UINT DefaultAudioChannels = 2;
     constexpr UINT DefaultAudioBitsPerSample = 16;

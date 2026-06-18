@@ -153,8 +153,21 @@ namespace PluginVideoRecord
             return false;
         }
 
+        const LONGLONG sampleTimeHns = GetSampleTimeHns();
+        if (!ShouldCaptureVideoFrame(sampleTimeHns))
+        {
+            return true;
+        }
+
+        const size_t estimatedFrameBytes =
+            EstimateFrameBytes(dx11Capture_.GetCaptureWidth(), dx11Capture_.GetCaptureHeight());
+        if (!writer_.ShouldAcceptFrame(estimatedFrameBytes))
+        {
+            return !writer_.TryGetLastError(error);
+        }
+
         CapturedFrame frame = {};
-        if (!dx11Capture_.CaptureFrame(runtime, GetSampleTimeHns(), frame, error))
+        if (!dx11Capture_.CaptureFrame(runtime, sampleTimeHns, frame, error))
         {
             return false;
         }
@@ -191,8 +204,21 @@ namespace PluginVideoRecord
             return false;
         }
 
+        const LONGLONG sampleTimeHns = GetSampleTimeHns();
+        if (!ShouldCaptureVideoFrame(sampleTimeHns))
+        {
+            return true;
+        }
+
+        const size_t estimatedFrameBytes =
+            EstimateFrameBytes(dx12Capture_.GetCaptureWidth(), dx12Capture_.GetCaptureHeight());
+        if (!writer_.ShouldAcceptFrame(estimatedFrameBytes))
+        {
+            return !writer_.TryGetLastError(error);
+        }
+
         CapturedFrame frame = {};
-        if (!dx12Capture_.CaptureFrame(runtime, GetSampleTimeHns(), frame, error))
+        if (!dx12Capture_.CaptureFrame(runtime, sampleTimeHns, frame, error))
         {
             return false;
         }
@@ -229,8 +255,21 @@ namespace PluginVideoRecord
             return false;
         }
 
+        const LONGLONG sampleTimeHns = GetSampleTimeHns();
+        if (!ShouldCaptureVideoFrame(sampleTimeHns))
+        {
+            return true;
+        }
+
+        const size_t estimatedFrameBytes =
+            EstimateFrameBytes(vulkanCapture_.GetCaptureWidth(), vulkanCapture_.GetCaptureHeight());
+        if (!writer_.ShouldAcceptFrame(estimatedFrameBytes))
+        {
+            return !writer_.TryGetLastError(error);
+        }
+
         CapturedFrame frame = {};
-        if (!vulkanCapture_.CaptureFrame(runtime, GetSampleTimeHns(), frame, error))
+        if (!vulkanCapture_.CaptureFrame(runtime, sampleTimeHns, frame, error))
         {
             return false;
         }

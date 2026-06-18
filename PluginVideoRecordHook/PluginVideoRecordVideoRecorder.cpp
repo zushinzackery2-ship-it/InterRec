@@ -99,6 +99,7 @@ namespace PluginVideoRecord
 {
     PluginVideoRecordVideoRecorder::PluginVideoRecordVideoRecorder()
         : startQpcHns_(0)
+        , nextVideoCaptureTimeHns_(0)
         , qpcReady_(false)
         , recording_(false)
         , activeBackend_(GraphicsBackend::Unknown)
@@ -200,6 +201,23 @@ namespace PluginVideoRecord
         return delta * 10000000LL / performanceFrequency_.QuadPart;
     }
 
+    bool PluginVideoRecordVideoRecorder::ShouldCaptureVideoFrame(LONGLONG sampleTimeHns)
+    {
+        const LONGLONG frameIntervalHns = 10000000LL / DefaultFrameRate;
+        if (nextVideoCaptureTimeHns_ > 0 && sampleTimeHns < nextVideoCaptureTimeHns_)
+        {
+            return false;
+        }
+
+        nextVideoCaptureTimeHns_ = sampleTimeHns + frameIntervalHns;
+        return true;
+    }
+
+    size_t PluginVideoRecordVideoRecorder::EstimateFrameBytes(UINT width, UINT height)
+    {
+        return static_cast<size_t>(width) * static_cast<size_t>(height) * 4u;
+    }
+
     bool PluginVideoRecordVideoRecorder::StartWriterAndAudio(
         UINT width,
         UINT height,
@@ -213,6 +231,7 @@ namespace PluginVideoRecord
         }
 
         startQpcHns_ = startCounter_.QuadPart * 10000000LL / performanceFrequency_.QuadPart;
+        nextVideoCaptureTimeHns_ = 0;
         qpcReady_ = true;
 
         if (!writer_.Start(outputPath, width, height, error))
@@ -240,6 +259,7 @@ namespace PluginVideoRecord
         vulkanCapture_.Shutdown();
 
         startQpcHns_ = 0;
+        nextVideoCaptureTimeHns_ = 0;
         qpcReady_ = false;
         recording_ = false;
         activeBackend_ = GraphicsBackend::Unknown;

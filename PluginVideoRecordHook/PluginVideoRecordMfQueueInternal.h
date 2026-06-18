@@ -12,15 +12,15 @@ namespace PluginVideoRecord::MfQueueInternal
     constexpr double QueueShrinkThresholdRatio = 0.35;
     constexpr DWORDLONG PhysicalMemoryReserveBytes = 512ull * 1024ull * 1024ull;
 
-    constexpr size_t VideoDefaultNormalBudgetBytes = 128ull * 1024ull * 1024ull;
-    constexpr size_t VideoDefaultHardCapBytes = 512ull * 1024ull * 1024ull;
-    constexpr size_t VideoAbsoluteHardCapBytes = 1024ull * 1024ull * 1024ull;
-    constexpr size_t VideoNormalSampleMultiplier = 6;
-    constexpr size_t VideoBurstSampleMultiplier = 24;
+    constexpr size_t VideoDefaultNormalBudgetBytes = 24ull * 1024ull * 1024ull;
+    constexpr size_t VideoDefaultHardCapBytes = 64ull * 1024ull * 1024ull;
+    constexpr size_t VideoAbsoluteHardCapBytes = 128ull * 1024ull * 1024ull;
+    constexpr size_t VideoNormalSampleMultiplier = 2;
+    constexpr size_t VideoBurstSampleMultiplier = 3;
 
-    constexpr size_t AudioDefaultNormalBudgetBytes = 16ull * 1024ull * 1024ull;
-    constexpr size_t AudioDefaultHardCapBytes = 64ull * 1024ull * 1024ull;
-    constexpr size_t AudioAbsoluteHardCapBytes = 256ull * 1024ull * 1024ull;
+    constexpr size_t AudioDefaultNormalBudgetBytes = 4ull * 1024ull * 1024ull;
+    constexpr size_t AudioDefaultHardCapBytes = 16ull * 1024ull * 1024ull;
+    constexpr size_t AudioAbsoluteHardCapBytes = 64ull * 1024ull * 1024ull;
     constexpr size_t AudioNormalSampleMultiplier = 256;
     constexpr size_t AudioBurstSampleMultiplier = 1024;
 
@@ -84,6 +84,9 @@ namespace PluginVideoRecord::MfQueueInternal
         budget.currentBudgetBytes = normalBudgetBytes;
         budget.hardCapBytes = hardCapBytes;
         budget.droppedSamples = 0;
+        budget.skippedSamples = 0;
+        budget.suppressedDropLogs = 0;
+        budget.lastDropLogTick = 0;
     }
 
     inline void EnsureBudgetFloor(

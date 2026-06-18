@@ -32,6 +32,8 @@ namespace PluginVideoRecord
         bool BuildOutputPath(std::wstring& outputPath, std::wstring& error) const;
         bool BuildPendingOutputPath(std::wstring& outputPath) const;
         LONGLONG GetSampleTimeHns() const;
+        bool ShouldCaptureVideoFrame(LONGLONG sampleTimeHns);
+        static size_t EstimateFrameBytes(UINT width, UINT height);
         bool StartWriterAndAudio(UINT width, UINT height, const std::wstring& outputPath, std::wstring& error);
         void StopUnlocked();
 
@@ -44,6 +46,7 @@ namespace PluginVideoRecord
         LARGE_INTEGER performanceFrequency_;
         LARGE_INTEGER startCounter_;
         LONGLONG startQpcHns_;
+        LONGLONG nextVideoCaptureTimeHns_;
         bool qpcReady_;
         bool recording_;
         GraphicsBackend activeBackend_;

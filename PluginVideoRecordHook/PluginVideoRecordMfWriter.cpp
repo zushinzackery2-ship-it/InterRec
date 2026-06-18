@@ -42,10 +42,7 @@ namespace PluginVideoRecord
             outputPath_ = outputPath;
             width_ = width;
             height_ = height;
-            frames_.clear();
-            audioPackets_.clear();
-            ResetVideoQueueBudget(videoQueueBudget_);
-            ResetAudioQueueBudget(audioQueueBudget_);
+            ClearQueuesLocked();
             started_ = true;
             stopping_ = false;
             failed_ = false;
@@ -78,6 +75,7 @@ namespace PluginVideoRecord
             }
 
             stopping_ = true;
+            ClearQueuesLocked();
             condition_.notify_all();
         }
 
@@ -85,6 +83,17 @@ namespace PluginVideoRecord
         {
             workerThread_.join();
         }
+    }
+
+    bool PluginVideoRecordMfWriter::ShouldAcceptFrame(size_t estimatedFrameBytes)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!started_ || stopping_ || failed_)
+        {
+            return false;
+        }
+
+        return CanAcceptCapturedFrame(frames_, videoQueueBudget_, estimatedFrameBytes);
     }
 
     bool PluginVideoRecordMfWriter::EnqueueFrame(CapturedFrame&& frame)
@@ -248,10 +257,7 @@ namespace PluginVideoRecord
         CoUninitialize();
 
         std::lock_guard<std::mutex> lock(mutex_);
-        frames_.clear();
-        audioPackets_.clear();
-        ResetVideoQueueBudget(videoQueueBudget_);
-        ResetAudioQueueBudget(audioQueueBudget_);
+        ClearQueuesLocked();
         started_ = false;
         stopping_ = false;
         startupCompleted_ = true;
@@ -265,5 +271,11 @@ namespace PluginVideoRecord
         lastError_ = error;
         startupCompleted_ = true;
         condition_.notify_all();
+    }
+
+    void PluginVideoRecordMfWriter::ClearQueuesLocked()
+    {
+        ClearCapturedFrameQueue(frames_, videoQueueBudget_);
+        ClearCapturedAudioPacketQueue(audioPackets_, audioQueueBudget_);
     }
 }

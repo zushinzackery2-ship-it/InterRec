@@ -27,6 +27,7 @@ namespace PluginVideoRecord
 
         bool Start(const std::wstring& outputPath, UINT width, UINT height, std::wstring& error);
         void Stop();
+        bool ShouldAcceptFrame(size_t estimatedFrameBytes);
         bool EnqueueFrame(CapturedFrame&& frame);
         bool EnqueueAudioPacket(CapturedAudioPacket&& packet);
         bool TryGetLastError(std::wstring& error) const;
@@ -34,6 +35,7 @@ namespace PluginVideoRecord
     private:
         void WorkerThread();
         void SetFailure(const std::wstring& error);
+        void ClearQueuesLocked();
 
         mutable std::mutex mutex_;
         std::condition_variable condition_;
