@@ -12,7 +12,7 @@ namespace PluginVideoRecord
         size_t currentBudgetBytes;
         size_t hardCapBytes;
         size_t droppedSamples;
-        size_t skippedSamples;
+        size_t rejectedSamples;
         size_t suppressedDropLogs;
         ULONGLONG lastDropLogTick;
     };

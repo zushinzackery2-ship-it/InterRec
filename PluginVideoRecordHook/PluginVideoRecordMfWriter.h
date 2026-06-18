@@ -35,6 +35,7 @@ namespace PluginVideoRecord
     private:
         void WorkerThread();
         void SetFailure(const std::wstring& error);
+        void SetFailureLocked(const std::wstring& error);
         void ClearQueuesLocked();
 
         mutable std::mutex mutex_;

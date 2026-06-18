@@ -6,6 +6,8 @@
 
 namespace
 {
+    const wchar_t VideoBackpressureError[] = L"视频编码速度跟不上录制目标，已停止录制以避免输出跳帧视频。";
+
     bool HasPendingSamples(
         const std::deque<PluginVideoRecord::CapturedFrame>& videoFrames,
         const std::deque<PluginVideoRecord::CapturedAudioPacket>& audioPackets)
@@ -93,7 +95,13 @@ namespace PluginVideoRecord
             return false;
         }
 
-        return CanAcceptCapturedFrame(frames_, videoQueueBudget_, estimatedFrameBytes);
+        if (CanAcceptCapturedFrame(frames_, videoQueueBudget_, estimatedFrameBytes))
+        {
+            return true;
+        }
+
+        SetFailureLocked(VideoBackpressureError);
+        return false;
     }
 
     bool PluginVideoRecordMfWriter::EnqueueFrame(CapturedFrame&& frame)
@@ -105,8 +113,14 @@ namespace PluginVideoRecord
         }
 
         const bool enqueued = EnqueueCapturedFrame(frames_, videoQueueBudget_, std::move(frame));
+        if (!enqueued)
+        {
+            SetFailureLocked(VideoBackpressureError);
+            return false;
+        }
+
         condition_.notify_all();
-        return enqueued;
+        return true;
     }
 
     bool PluginVideoRecordMfWriter::EnqueueAudioPacket(CapturedAudioPacket&& packet)
@@ -172,7 +186,7 @@ namespace PluginVideoRecord
         }
 
         LONGLONG lastVideoSampleTime = -1;
-        while (!failed_)
+        while (true)
         {
             bool writeVideo = false;
             CapturedFrame videoFrame = {};
@@ -267,6 +281,11 @@ namespace PluginVideoRecord
     void PluginVideoRecordMfWriter::SetFailure(const std::wstring& error)
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        SetFailureLocked(error);
+    }
+
+    void PluginVideoRecordMfWriter::SetFailureLocked(const std::wstring& error)
+    {
         failed_ = true;
         lastError_ = error;
         startupCompleted_ = true;

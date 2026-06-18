@@ -75,9 +75,9 @@ namespace
         budget.lastDropLogTick = now;
     }
 
-    void RecordSkippedSample(PluginVideoRecord::MfQueueBudget& budget)
+    void RecordRejectedSample(PluginVideoRecord::MfQueueBudget& budget)
     {
-        ++budget.skippedSamples;
+        ++budget.rejectedSamples;
     }
 
     template <typename SampleT, typename ByteGetterFn>
@@ -92,7 +92,8 @@ namespace
         size_t absoluteHardCapBytes,
         size_t normalSampleMultiplier,
         size_t burstSampleMultiplier,
-        bool allowElasticGrowth)
+        bool allowElasticGrowth,
+        bool dropOldestOnOverflow)
     {
         const size_t sampleBytes = byteGetter(sample);
         PluginVideoRecord::MfQueueInternal::EnsureBudgetFloor(
@@ -124,21 +125,28 @@ namespace
             }
         }
 
-        size_t droppedSamples = 0;
-        size_t droppedBytes = 0;
-        DropQueuedSamples(
-            queue,
-            budget,
-            requiredBytes,
-            sampleBytes,
-            byteGetter,
-            droppedSamples,
-            droppedBytes);
-        LogDroppedSamples(budget, queueName, droppedSamples, droppedBytes);
+        if (dropOldestOnOverflow)
+        {
+            size_t droppedSamples = 0;
+            size_t droppedBytes = 0;
+            DropQueuedSamples(
+                queue,
+                budget,
+                requiredBytes,
+                sampleBytes,
+                byteGetter,
+                droppedSamples,
+                droppedBytes);
+            LogDroppedSamples(budget, queueName, droppedSamples, droppedBytes);
+        }
 
         if (requiredBytes > budget.currentBudgetBytes)
         {
-            LogDroppedSamples(budget, queueName, 1, sampleBytes);
+            if (dropOldestOnOverflow)
+            {
+                LogDroppedSamples(budget, queueName, 1, sampleBytes);
+            }
+
             return false;
         }
 
@@ -182,6 +190,7 @@ namespace PluginVideoRecord
             PluginVideoRecord::MfQueueInternal::VideoAbsoluteHardCapBytes,
             PluginVideoRecord::MfQueueInternal::VideoNormalSampleMultiplier,
             PluginVideoRecord::MfQueueInternal::VideoBurstSampleMultiplier,
+            false,
             false);
     }
 
@@ -205,7 +214,7 @@ namespace PluginVideoRecord
             return true;
         }
 
-        RecordSkippedSample(budget);
+        RecordRejectedSample(budget);
         return false;
     }
 
@@ -225,6 +234,7 @@ namespace PluginVideoRecord
             PluginVideoRecord::MfQueueInternal::AudioAbsoluteHardCapBytes,
             PluginVideoRecord::MfQueueInternal::AudioNormalSampleMultiplier,
             PluginVideoRecord::MfQueueInternal::AudioBurstSampleMultiplier,
+            true,
             true);
     }
 
