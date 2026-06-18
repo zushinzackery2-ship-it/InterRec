@@ -23,7 +23,7 @@ namespace PluginVideoRecord
     HRESULT WriteVideoFrameSample(
         IMFSinkWriter* sinkWriter,
         DWORD streamIndex,
-        const CapturedFrame& frame,
+        CapturedFrame&& frame,
         LONGLONG duration);
 
     HRESULT WriteAudioSample(

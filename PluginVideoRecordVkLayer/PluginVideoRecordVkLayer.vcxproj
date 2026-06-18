@@ -79,6 +79,7 @@
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVideoRecorderFrame.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx11Capture.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx12Capture.cpp" />
+    <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx12CapturePixels.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordDx12CaptureResources.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCaptureResources.cpp" />
     <ClCompile Include="..\PluginVideoRecordHook\PluginVideoRecordVulkanCaptureFrame.cpp" />

@@ -206,10 +206,24 @@ namespace PluginVideoRecord
         const D3D11_MAPPED_SUBRESOURCE& mappedResource,
         CapturedFrame& frame) const
     {
+        const size_t rowBytes = static_cast<size_t>(captureWidth_) * 4u;
+        if (format_ == DXGI_FORMAT_B8G8R8A8_UNORM || format_ == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB)
+        {
+            for (UINT y = 0; y < captureHeight_; ++y)
+            {
+                const auto* sourceRow =
+                    static_cast<const std::uint8_t*>(mappedResource.pData) + y * mappedResource.RowPitch;
+                auto* destinationRow = frame.pixels.data() + static_cast<size_t>(y) * rowBytes;
+                CopyMemory(destinationRow, sourceRow, rowBytes);
+            }
+
+            return;
+        }
+
         for (UINT y = 0; y < captureHeight_; ++y)
         {
             auto* sourceRow = static_cast<const std::uint8_t*>(mappedResource.pData) + y * mappedResource.RowPitch;
-            auto* destinationRow = frame.pixels.data() + static_cast<size_t>(y) * captureWidth_ * 4u;
+            auto* destinationRow = frame.pixels.data() + static_cast<size_t>(y) * rowBytes;
 
             for (UINT x = 0; x < captureWidth_; ++x)
             {

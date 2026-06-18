@@ -234,7 +234,7 @@ namespace PluginVideoRecord
                 hr = WriteVideoFrameSample(
                     sinkWriter.Get(),
                     streamIndices.videoStreamIndex,
-                    videoFrame,
+                    std::move(videoFrame),
                     duration);
                 if (FAILED(hr))
                 {
